@@ -1,6 +1,10 @@
-# TikTok 爆款脚本分析工作台 — 开发任务清单
+# TikTok 爆款脚本分析工作台 — 开发任务清单 v0.6
 
-> 依赖关系：Phase 1 → Phase 2 → Phase 3 + Phase 4 → Phase 5
+> **本文档是执行计划**(Phase 1–5,每项含文件路径 + 验证标准)。
+> **技术事实(选型理由 / 状态机 / API 规格 / Prompt 模板)见 [`docs/tech.md`](./tech.md)**。
+> 开发中两文档冲突时,**以本文档为准**(本文档更新频次更高)。
+>
+> 依赖关系:Phase 1 → Phase 2 → Phase 3 + Phase 4 → Phase 5
 >
 > Phase 3 和 Phase 4 可并行开发。
 
@@ -18,6 +22,7 @@
 - [ ] `lib/supabase/client.ts` — 服务端 Supabase 客户端（使用 service_role key）
 - [ ] `lib/supabase/browser-client.ts` — 浏览器端 Supabase 客户端（使用 anon key）
 - [ ] `lib/supabase/queries.ts` — 常用查询封装
+  - (Phase 2 在此加 `getNextPendingVideo()`,见 §2.2 调度器任务)
 
 ### 1.3 文件存储客户端
 - [ ] `lib/r2/client.ts` — R2 S3 兼容客户端（基于 `@aws-sdk/client-s3`）
@@ -26,12 +31,13 @@
 ### 1.4 外部 API 封装（含 Mock）
 - [ ] `lib/apify/client.ts` — Apify API 封装（启动 Actor + 轮询结果）
 - [ ] `lib/apify/mock.ts` — 模拟 TikTok 数据
-- [ ] `lib/gemini/client.ts` — Gemini API 封装（调用 SDK 生成分析结果）
-- [ ] `lib/gemini/prompt.ts` — Prompt 模板（System Prompt + User Prompt）
+- [ ] `lib/gemini/client.ts` — **OpenRouter** API 封装（不是 Google Gemini SDK!走 `https://openrouter.ai/api/v1/chat/completions`,详见 tech.md §3.5 / §8.3）
+- [ ] `lib/gemini/prompt.ts` — Prompt 模板（System Prompt + User Prompt,JSON 模板见 tech.md §8.2）
 - [ ] `lib/gemini/mock.ts` — 模拟分析结果 JSON
 
 ### 1.5 管线类型定义
 - [ ] `lib/pipeline/types.ts` — Video, Task, AnalysisResult, Asset 等类型
+- [ ] 含 analysis_status 枚举(值见 tech.md §2.7 状态机,11 个状态:`new` / `apify_started` / `metadata_fetched` / `video_downloaded` / `video_processed` / `audio_extracted` / `analyzing` / `completed` / `failed` / `duplicate` / `pending_analysis`)
 
 ### 1.6 工具函数
 - [ ] `lib/utils.ts` — 通用工具（URL 校验、状态 Label 映射等）
@@ -54,25 +60,38 @@
   - 如果是 completed → 附带完整分析结果
 
 ### 2.2 核心调度器
+- [ ] `supabase/migrations/00002_get_next_pending_video.sql` — SQL function
+  - **为什么**: `FOR UPDATE SKIP LOCKED` 必须写在 Postgres 函数里,supabase-js 的 `.from().select()` 不支持
+  - 返回 `TABLE (id UUID, analysis_status TEXT, tiktok_video_id TEXT)`
+  - 状态过滤:8 个非终态(同 tech.md §6.2,排除 deprecated 的 `video_downloaded`)
+  - `ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED`
+- [ ] `lib/supabase/queries.ts` 加 `getNextPendingVideo()` — 用 `supabase.rpc('get_next_pending_video').single()` 调用上面 SQL function
 - [ ] `app/api/cron/process/route.ts` — `GET /api/cron/process`
-  - `SELECT ... LIMIT 1 FOR UPDATE SKIP LOCKED` 取待处理视频
+  - 调 `getNextPendingVideo()` 取一个待处理视频
   - 根据 analysis_status 路由到对应 handler
   - 成功 → 推进状态，末尾 `fetch('/api/cron/process')` 接力
   - 失败 → 标记 failed，记录 error_message
 
-### 2.3 Pipeline Handler
-- [ ] `lib/pipeline/fetch-metadata.ts` — Step 1a: 启动 Apify Actor（~1s）
-- [ ] `lib/pipeline/poll-apify.ts` — Step 1b: 轮询 Apify 结果 + 去重（~3s）
-- [ ] `lib/pipeline/download-video.ts` — Step 2: 下载 MP4 + 封面到 /tmp（~5s）
-- [ ] `lib/pipeline/upload-to-r2.ts` — Step 3: 上传 R2 获取公开 URL（~5s）
-- [ ] `lib/pipeline/extract-audio.ts` — Step 4: 提取旁白（Apify 字幕优先，~1s）
-- [ ] `lib/pipeline/analyze-gemini.ts` — Step 5: Gemini 分析 → 写入 results（~8s）
+### 2.3 Pipeline Handler(v0.7 6 步,R2 video_url 主路径)
+- [ ] `lib/pipeline/fetch-metadata.ts` — Step 1a: 启动 Apify Actor(~1s)
+- [ ] `lib/pipeline/poll-apify.ts` — Step 1b: 轮询 Apify 结果 + 字幕提取 + 去重(~3s)
+- [ ] `lib/pipeline/upload-video-to-r2.ts` — Step 2: 下载 MP4 + 封面 → 立即上传 R2(无 /tmp 中转,~10s,**v0.7 新合并原 Step 2+3**)
+- [ ] `lib/pipeline/extract-subtitle.ts` — Step 3: 旁白提取(Apify 字幕优先;**无字幕时检查 env WHISPER_API_KEY**:
+  - 已配置 → ASR(OpenAI Whisper),~5s
+  - 未配置 → 降级文本拼接(标题+description+hashtags))
+- [ ] `lib/pipeline/analyze-gemini.ts` — Step 4: 组装分析包 + 调 Gemini(**v0.7 改传 R2 video_url 完整视频理解,不再抽关键帧**,~8s)
+- [ ] 结果写入逻辑在 `analyze-gemini.ts` 末尾(原 Step 6)→ `completed`
 
 ### 2.4 视频 CRUD API
 - [ ] `app/api/videos/route.ts` — `GET /api/videos`（列表 + 分页 + 筛选）
 - [ ] `app/api/videos/[id]/route.ts` — `GET /api/videos/:id`（详情 + assets + analysis）
 
-**验证**：Mock 模式下 `curl -X POST /api/tasks` → 链式自动处理 → status=completed → 数据库有分析结果。
+**验证**:Mock 模式下 `curl -X POST /api/tasks` → 链式自动处理 → status=completed → 数据库有分析结果。
+
+**R2 配置前置**(v0.7 必做):
+- Cloudflare R2 bucket `tiktok-assets` 必须开 **Public Access**(Gemini 要 fetch 视频 URL 理解内容)
+- 推荐绑定自定义域名(默认 `r2.cloudflarestorage.com` 在某些地区不稳)
+- env 字段:`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME=tiktok-assets` / `R2_PUBLIC_URL`(自定义域名或默认域名)
 
 ---
 

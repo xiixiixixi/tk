@@ -1,8 +1,8 @@
-# TikTok 爆款脚本分析工作台：技术架构与实施手册 v0.5
+# TikTok 爆款脚本分析工作台：技术架构与实施手册 v0.7
 
-> 本文档是唯一的技术事实来源。每个章节的目标是：开发者在没有额外沟通的情况下可以独立实现。
->
-> **选型确认：Vercel Hobby（免费）+ Supabase（免费数据库）+ Cloudflare R2（免费存储）**
+> 本文档是技术事实来源（选型理由、状态机、API 规格、Prompt 模板）。
+> 执行计划见 [`docs/task.md`](./task.md)（Phase 1–5 任务清单 + 验证标准）。
+> **选型确认：Vercel Hobby（免费）+ Supabase（免费数据库）+ Cloudflare R2（公开可读,免费存储）+ OpenRouter（统一 AI 网关）**
 
 ---
 
@@ -13,9 +13,10 @@
 ```
 Vercel Hobby（网页 + API + HTTP 调用链）
 + Supabase（Postgres 数据库 + 去重 + 状态机）
-+ Cloudflare R2（视频文件 + 关键帧 + 封面图存储）
-+ Apify（TikTok 抓取）
-+ Gemini 官方 API（视频理解）
++ Cloudflare R2（视频文件 + 封面图,公开可读）
++ Apify（TikTok 抓取 + 字幕）
++ OpenRouter（统一 AI 网关,本期调 Gemini 模型）
++ Gemini 视频输入 = R2 公开 URL(完整视频理解,画面+音频)
 ```
 
 ### 1.2 为什么这个组合
@@ -34,7 +35,9 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 ❌ 完整 SaaS 权限系统
 ❌ 复杂任务队列（Inngest / QStash）
 ❌ 评论深度分析
-❌ ffmpeg 服务端视频处理（MVP 用 Apify 字幕 + 封面图代替）
+❌ Vercel Pro/Enterprise（10s 超时已用 HTTP 调用链解决,无付费需要）
+❌ Google AI Studio 直接调 Gemini(走 OpenRouter 统一网关,便于切换模型)
+❌ ffmpeg 服务端抽帧（v0.7 改用 R2 视频 URL 直传给 Gemini,完整视频理解）
 ```
 
 ### 1.4 MVP 成功定义
@@ -65,19 +68,22 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 
 10 秒的超时限制意味着整条链路必须切成多个独立步骤，每个步骤一次函数调用，单步 < 10 秒。
 
-### 2.3 步骤切分（7 步）
+### 2.3 步骤切分（6 步）
 
 ```
 Step 1a: 启动 Apify Actor              耗时 ~1s   状态 → apify_started
-Step 1b: 轮询 Apify 结果               耗时 ~3s   状态 → metadata_fetched
-Step 2:  下载 MP4 + 封面到 /tmp        耗时 ~5s   状态 → video_downloaded
-Step 3:  上传到 R2                     耗时 ~5s   状态 → video_processed
-Step 4:  提取旁白（Apify 字幕优先）      耗时 ~1s   状态 → audio_extracted
-Step 5:  Gemini 分析                  耗时 ~8s   状态 → analyzing
-Step 6:  保存结果到 Supabase           耗时 ~1s   状态 → completed
+Step 1b: 轮询 Apify 结果 + 字幕         耗时 ~3s   状态 → metadata_fetched
+Step 2:  下载 MP4 + 封面到 R2          耗时 ~10s  状态 → video_processed（合并原 step 2/3,直接上传）
+Step 3:  提取旁白(Apify 字幕,无则 ASR)  耗时 ~1s   状态 → audio_extracted
+Step 4:  组装分析包 + Gemini 分析(传 R2 视频 URL)  耗时 ~8s   状态 → analyzing
+Step 5:  保存结果到 Supabase           耗时 ~1s   状态 → completed
 ```
 
-每步都控制在 10 秒以内。
+**v0.7 关键变化**(相对 v0.6 7 步):
+- Step 2 + Step 3 合并:**下载 + 上传 R2 一气呵成**,省一次 /tmp 中转
+- **删除关键帧抽帧步骤**(v0.6 错误把"封面图当唯一帧"当 MVP 简化,实际可走完整视频)
+- **删除画面文字独立提取步骤**(Gemini 看完整视频自己读)
+- Gemini 输入 = R2 视频 URL(完整视频理解) + 旁白 + 元数据
 
 ### 2.4 HTTP 调用链：解决 Cron 缺失
 
@@ -141,6 +147,7 @@ const statusLabels: Record<string, string> = {
   new:                '排队中…',
   apify_started:      '正在连接 TikTok…',
   metadata_fetched:   '正在获取视频数据…',
+  // v0.7 deprecated: 状态本身不再使用,保留条目以兼容老数据/老告警路由
   video_downloaded:   '正在保存视频文件…',
   video_processed:    '正在处理视频画面…',
   audio_extracted:    '正在提取旁白字幕…',
@@ -159,9 +166,9 @@ apify_started          — Apify Actor 已启动，等待结果返回
   ↓
 metadata_fetched       — tiktok_video_id + 标题 + 作者 + 播放量等已就绪
   ↓
-video_downloaded       — MP4 + 封面已下载到 /tmp
+video_downloaded       — MP4 + 封面已下载到 /tmp  **[DEPRECATED since v0.7, do not use]** — 实际流转已跳过此状态(Step 2+3 合并)
   ↓
-video_processed        — 视频文件已上传到 R2，关键帧 URL 已记录
+video_processed        — 视频文件已上传到 R2，关键帧 URL 已记录 (v0.7 合并了原 video_downloaded + uploaded 状态)
   ↓
 audio_extracted        — 旁白/字幕文本已提取
   ↓
@@ -256,17 +263,20 @@ Apify 返回数据的关键字段：
 }
 ```
 
-### 3.5 视频理解：Gemini 官方 API
+### 3.5 视频理解：OpenRouter 调 Gemini
 
 ```
-SDK：@google/generative-ai
-模型：gemini-2.5-flash（默认）/ gemini-2.5-pro（高质量）
+SDK：原生 fetch（OpenRouter 兼容 OpenAI Chat Completions 格式）
+模型：google/gemini-3.5-flash（默认）/ google/gemini-2.5-pro（高质量）
+Base URL：https://openrouter.ai/api/v1
 ```
 
-为什么直接调 Gemini 而非通过 OpenRouter：
-- 原生支持图片输入（关键帧分析）
-- File API 支持视频上传
-- 少一层代理，少一个失败点
+**为什么走 OpenRouter 而非 Google AI Studio**:
+- 统一网关,后期可一键切换模型(OpenRouter 上 Gemini / Claude / GPT 都有)
+- 不用绑 Google Cloud 结算账户
+- 月度消费可视化、限流配置在 OpenRouter Dashboard
+
+**注意**:OpenRouter 上 Gemini 模型 ID 是 `google/gemini-3.5-flash`(带 `google/` 前缀),不是 Google AI Studio 的 `gemini-3.5-flash`。env 字段用 `GEMINI_MODEL` 存 OpenRouter ID。
 
 ### 3.6 Mock 模式
 
@@ -344,7 +354,7 @@ CREATE TRIGGER trg_videos_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 ```
 
-`analysis_status` 值：`new`, `apify_started`, `metadata_fetched`, `video_downloaded`, `video_processed`, `audio_extracted`, `analyzing`, `completed`, `failed`, `duplicate`, `pending_analysis`
+`analysis_status` 值:`new`, `apify_started`, `metadata_fetched`, `~~video_downloaded~~ (deprecated since v0.7)`, `video_processed`, `audio_extracted`, `analyzing`, `completed`, `failed`, `duplicate`, `pending_analysis`
 
 `source_type` 值：`manual_video`, `creator_monitor`, `keyword_search`, `hashtag_search`
 
@@ -479,10 +489,31 @@ CREATE TRIGGER trg_tasks_updated_at
 ```
 服务：Cloudflare R2
 Bucket 名称：tiktok-assets
-访问权限：公开可读（通过 R2 的 Public Access 设置）
-自定义域名：可选，R2 默认提供 https://<account>.r2.cloudflarestorage.com/<bucket>/...
-            或绑定自己的域名（如 https://assets.你的域名.com/）
+访问权限：⚠️ 必须开 Public Access（Gemini 要 fetch 视频 URL 理解内容,不开 R2 私有,Google 拿不到）
+自定义域名：强烈推荐绑定（如 https://cdn.你的域名.com）,R2 默认域名 r2.cloudflarestorage.com 在某些地区访问不稳
 ```
+
+### 5.1.1 开发期 vs 生产期 Public Access
+
+- **开发期**(.r2.dev + Public Access):本项目当前默认。优点:零配置,Gemini 直接 fetch 公开 URL;缺点:任何人能下载视频,版权风险 + .r2.dev 限速。
+
+- **生产期**(Presigned URL):改成用 AWS SDK 生成 1 小时过期的签名 URL,关掉 Public Access。代码示例:
+
+```typescript
+import { S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+const r2 = new S3Client({ region: 'auto', endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`, credentials: {...} })
+
+export async function getR2PresignedUrl(key: string): Promise<string> {
+  const cmd = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: key })
+  return getSignedUrl(r2, cmd, { expiresIn: 3600 })  // 1 hour
+}
+```
+
+优点:链接 1 小时自动失效,不开 Public Access,合规更好。
+实施前置:实测 Google Gemini 能不能 fetch R2 S3 endpoint(还没验证,见 scripts/verify-r2-presigned.js 待写)。
 
 ### 5.2 目录结构
 
@@ -646,8 +677,9 @@ POST   /api/settings      — 保存设置
 ```text
 1. SELECT * FROM videos
    WHERE analysis_status IN (
-     'new', 'apify_started', 'metadata_fetched', 'video_downloaded',
+     'new', 'apify_started', 'metadata_fetched',
      'video_processed', 'audio_extracted', 'analyzing', 'pending_analysis'
+     -- ~~'video_downloaded'~~ (v0.7 deprecated, 不再作为待处理状态查询)
    )
    ORDER BY created_at ASC
    LIMIT 1
@@ -655,15 +687,14 @@ POST   /api/settings      — 保存设置
 
 2. 如果没有待处理视频 → return { processed: 0 }
 
-3. 根据 analysis_status 路由到对应 handler：
-   - 'new'              → fetch_metadata()           // 启动 Apify
-   - 'apify_started'     → poll_apify_result()        // 轮询 Apify 结果
-   - 'metadata_fetched' → download_video()            // 下载 MP4 + 封面到 /tmp
-   - 'video_downloaded'  → upload_to_r2()             // 上传到 R2
-   - 'video_processed'  → extract_audio()             // 提取旁白
-   - 'audio_extracted'  → analyze_with_gemini()       // Gemini 分析
-   - 'analyzing'        → save_analysis_result()      // 保存结果
-   - 'pending_analysis' → reset_and_restart()          // 重新分析
+3. 根据 analysis_status 路由到对应 handler(v0.7 6 步):
+   - 'new'              → fetch-metadata()         // 启动 Apify
+   - 'apify_started'    → poll-apify()             // 轮询 Apify 结果 + 字幕
+   - 'metadata_fetched' → upload-video-to-r2()     // 下载 MP4 + 封面 + 立即上传 R2
+   - 'video_processed'  → extract-subtitle()       // 提取旁白(Apify 字幕优先,无则 ASR)
+   - 'audio_extracted'  → analyze-gemini()         // 组装分析包 + 调 Gemini(传 R2 视频 URL)
+   - 'analyzing'        → save-analysis-result()   // 保存结果
+   - 'pending_analysis' → reset-and-restart()      // 重新分析
 
 4. 成功 → 更新 status 到下一阶段
    失败 → status = 'failed'，记录 error_message
@@ -680,7 +711,7 @@ POST   /api/settings      — 保存设置
 
 ## 7. Handler 详细设计
 
-### 7.1 fetch_metadata — 启动 Apify
+### 7.1 fetch-metadata — 启动 Apify
 
 ```
 输入：video 记录（status = 'new'）
@@ -694,7 +725,7 @@ POST   /api/settings      — 保存设置
 3. UPDATE videos SET apify_run_id = runId, analysis_status = 'apify_started'
 ```
 
-### 7.2 poll_apify_result — 轮询 Apify 结果
+### 7.2 poll-apify — 轮询 Apify 结果
 
 ```
 输入：video 记录（status = 'apify_started'）
@@ -720,68 +751,71 @@ POST   /api/settings      — 保存设置
 6. status → metadata_fetched
 ```
 
-### 7.3 download_video — 下载视频文件
+### 7.3 ~~download-video~~ → **upload-video-to-r2** (v0.7 合并)
+
+**[DEPRECATED since v0.7]** v0.6 的 `download-video` + `upload-to-r2` 两步已合并为 `upload-video-to-r2`,原 handler 不再独立存在。
+
+新 handler 描述：
 
 ```
 输入：video 记录（status = 'metadata_fetched'）
-输出：文件写入 Vercel 的 /tmp 目录
-单步耗时：~5s
+输出：videos.video_file_url + videos.cover_url 已更新为 R2 公开 URL
+单步耗时：~10s（v0.7 合并后,无 /tmp 中转）
 
 流程：
-1. 从 Apify 数据中获取视频下载链接
-2. 下载 MP4 → Vercel /tmp/{video_id}.mp4
-3. 下载封面 → /tmp/{video_id}_cover.jpg
-4. 记录临时路径到 video_assets 表
-5. status → video_downloaded
+1. 从 Apify 数据中获取视频下载链接 + 封面图 URL
+2. 并行下载 MP4(Buffer)+ 封面图(Buffer)到内存
+3. 立即上传 R2:{video_id}/video.mp4 + {video_id}/cover.jpg
+4. 更新 video_assets 表(asset_type='mp4' / 'cover',asset_url=R2 公开 URL)
+5. 更新 videos.cover_url 和 videos.video_file_url
+6. status → video_processed(直接跳过 video_downloaded,合并到 video_processed)
 
 降级方案（Apify 无下载链接时）：
-- 跳过 MP4 下载，直接下载封面图
-- 后续 Gemini 分析只用封面 + 字幕
+- 跳过 MP4,只下载封面图
+- video_file_url 留空,Gemini 调用时只用封面
+- status 仍走 video_processed
 ```
 
-### 7.4 upload_to_r2 — 上传到 R2
+### 7.4 ~~upload-to-r2~~ (v0.7 移除)
 
-```
-输入：video 记录（status = 'video_downloaded'）
-输出：R2 公开 URL
-单步耗时：~5s
+**[REMOVED since v0.7]** 逻辑已合并到 §7.3 `upload-video-to-r2`。原 Step 2(下载到 /tmp) + Step 3(上传 R2) 合并为一次 handler 调用,无 /tmp 中转。
 
-流程：
-1. 从 /tmp 读取 {video_id}.mp4 → 上传 R2: {video_id}/video.mp4
-2. 从 /tmp 读取 {video_id}_cover.jpg → 上传 R2: {video_id}/cover.jpg
-3. 更新 video_assets.asset_url 为 R2 公开 URL
-4. 封面图同时也作为关键帧 frame_0000 记录
-5. 更新 videos.cover_url 和 videos.video_file_url
-6. status → video_processed
-```
-
-### 7.5 extract_audio — 提取旁白/字幕
+### 7.5 extract-subtitle — 提取旁白/字幕
 
 ```
 输入：video 记录（status = 'video_processed'）
-输出：旁白文本
-单步耗时：~1s
+输出：完整旁白文本 + 时间戳分段
+单步耗时：~1s（Apify 字幕）/ ~5s（ASR 降级）
 
 流程：
-1. 检查 Apify 数据中是否有字幕字段（textExtra）
-2. 有 → 拼接为纯文本，INSERT video_assets (asset_type='subtitle')
-3. 没有 → 降级：用视频标题 + description + hashtags 拼接
-   作为「推测旁白文本」
+1. 检查 Apify 数据中是否有字幕字段（textExtra / subtitles）
+2. 有 → 拼接为纯文本 + 记录分段 INSERT video_assets (asset_type='subtitle')
+3. 没有 → 检查 env WHISPER_API_KEY 是否配置:
+   - 已配置 → 调用 ASR(OpenAI Whisper API)对 R2 视频 URL 转录,~5s
+   - 未配置 → 降级到文本拼接:用视频标题 + description + hashtags 拼成"推测旁白文本"(质量低但稳定免费,不阻塞流程)
 4. status → audio_extracted
 ```
 
-### 7.6 analyze_with_gemini — AI 分析
+### 7.6 analyze-gemini — AI 分析(走 OpenRouter 传 R2 视频 URL)
 
 ```
-输入：video 记录 + 元数据 + 旁白文本 + 封面/关键帧 URL
+输入：video 记录 + 元数据 + 旁白文本 + R2 视频 URL + 封面 URL
 输出：结构化分析结果 JSON
 单步耗时：~8s
 
 流程：
 1. 组装分析包（见第 8 节 Prompt 模板）
-2. 调 Gemini SDK
+   - text: 旁白 + 元数据
+   - video_url: R2 视频公开 URL（Gemini 看完整视频,画面+音频）
+   - image_url: R2 封面 URL（辅助参考）
+2. 调 OpenRouter chat/completions（gemini-3.5-flash）
 3. 解析返回 JSON → INSERT INTO analysis_results
 4. status → completed
+
+为什么用 R2 视频 URL 而非 TikTok 源 URL：
+- TikTok 源 URL 被风控/地区限制，Google fetch 经常失败
+- R2(Cloudflare CDN)全球可达,Google 在 us-west 一定能 fetch
+- 单次调用,完整视频理解（画面+音频+时间轴）,比抽帧准 N 倍
 ```
 
 ### 7.7 错误处理（适用于所有 handler）
@@ -919,40 +953,58 @@ try {
 }
 ```
 
-### 8.3 调用代码
+### 8.3 调用代码(OpenRouter 路径,传 R2 视频 URL)
 
 ```typescript
 // lib/gemini/client.ts
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 
 export async function analyzeVideo(input: AnalysisInput): Promise<AnalysisOutput> {
   if (process.env.MOCK_GEMINI === 'true') {
     return MOCK_ANALYSIS_RESULT
   }
 
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-  })
+  const model = process.env.GEMINI_MODEL || 'google/gemini-3.5-flash'
 
-  const prompt = buildPrompt(input)
-  const imageParts = input.frameUrls
-    .filter(url => url) // 只传有效的 URL
-    .map(url => ({
-      fileData: { fileUri: url, mimeType: 'image/jpeg' as const }
-    }))
-
-  const result = await model.generateContent([prompt, ...imageParts])
-  const text = result.response.text()
-
-  // Gemini 可能把 JSON 包在 ```json ... ``` 里
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error(`Gemini 返回非 JSON: ${text.slice(0, 200)}`)
+  // v0.7 关键变化:传 video_url 给 Gemini(R2 公开 URL),完整视频理解
+  // image_url(封面)作为辅助参考
+  const content: any[] = [
+    { type: 'text', text: buildUserPrompt(input) },
+  ]
+  if (input.videoR2Url) {
+    content.push({ type: 'video_url', video_url: { url: input.videoR2Url } })
+  }
+  if (input.coverR2Url) {
+    content.push({ type: 'image_url', image_url: { url: input.coverR2Url } })
   }
 
-  return JSON.parse(jsonMatch[0])
+  const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 8192,  // 加大:完整视频分析输出更长
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter ${response.status}: ${await response.text()}`)
+  }
+
+  const data = await response.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('OpenRouter 返回空')
+
+  return JSON.parse(text)
 }
 ```
 
@@ -1075,10 +1127,9 @@ tiktok/
 │   │   ├── types.ts
 │   │   ├── fetch-metadata.ts       # Step 1a: 启动 Apify
 │   │   ├── poll-apify.ts           # Step 1b: 轮询结果
-│   │   ├── download-video.ts       # Step 2: 下载到 /tmp
-│   │   ├── upload-to-r2.ts         # Step 3: 上传 R2
-│   │   ├── extract-audio.ts        # Step 4: 提取旁白
-│   │   └── analyze-gemini.ts       # Step 5: Gemini 分析
+│   │   ├── upload-video-to-r2.ts   # Step 2: 下载 MP4 + 封面 → 立即上传 R2(v0.7 合并)
+│   │   ├── extract-subtitle.ts     # Step 3: 提取旁白(v0.7 由 extract-audio 改名)
+│   │   └── analyze-gemini.ts       # Step 4: Gemini 分析(结果写入也在末尾)
 │   └── utils.ts
 ├── components/
 │   ├── ui/                         # shadcn/ui
@@ -1123,16 +1174,19 @@ R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=tiktok-assets
-R2_PUBLIC_URL=                    # 自定义域名或 R2 默认域名
+R2_PUBLIC_URL=                    # 自定义域名或 R2 默认域名(开发期用 .r2.dev,生产期改成不填/空字符串)
 
 # Apify（TikTok 抓取）
 APIFY_API_KEY=
 MOCK_APIFY=true                   # 不配 Key 时用 Mock
 
-# Gemini（AI 分析）
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
-MOCK_GEMINI=true                  # 不配 Key 时用 Mock
+# OpenRouter(统一 AI 网关,本期调 Gemini)
+OPENROUTER_API_KEY=
+GEMINI_MODEL=google/gemini-3.5-flash   # OpenRouter ID,不是 Google AI Studio ID
+MOCK_GEMINI=true                       # 不配 Key 时用 Mock
+
+# OpenAI Whisper(可选,ASR 降级;不配就走文本拼接)
+WHISPER_API_KEY=
 ```
 
 ---
@@ -1151,8 +1205,8 @@ MOCK_GEMINI=true                  # 不配 Key 时用 Mock
 
 1. [dash.cloudflare.com](https://dash.cloudflare.com) → R2
 2. 创建 Bucket：`tiktok-assets`
-3. Settings → Public Access → 开启 Public Access
-4. 创建 API Token：R2 → Manage R2 API Tokens → 创建（权限：Object Read & Write）
+3. Settings → Public Access → 开启 Public Access(**v0.7 必开**,Gemini 要 fetch 视频 URL 理解内容)
+4. 创建 API Token:R2 → Manage R2 API Tokens → 创建(权限:Object Read & Write)
 5. 获取 `Access Key ID` + `Secret Access Key` + `Account ID`
 6. 填入环境变量
 
@@ -1183,7 +1237,7 @@ curl http://localhost:3000/api/cron/process
 1. 已分析视频不重复调 Gemini（查 tiktok_video_id 去重后直接返回）
 2. 已存在视频只更新互动数据，不重新跑分析
 3. 每个关键词限制抓取数量（默认 20 条）
-4. 每个视频关键帧只取 1–3 张（MVP 用封面图作为唯一帧）
+4. ~~每个视频关键帧只取 1–3 张（MVP 用封面图作为唯一帧）~~ (v0.7 删除:Gemini 直接看完整 R2 视频,不再单独抽关键帧)
 5. 超过 60 秒的视频只分析前 60 秒
 6. 用户点「重新分析」才新建 analysis_version 再次调 Gemini
 7. 评论分析不放第一版
@@ -1196,56 +1250,7 @@ curl http://localhost:3000/api/cron/process
 
 ## 14. MVP 开发顺序
 
-### Phase 1：单视频分析闭环
-
-```
-☐ 1.  Next.js 项目初始化（Tailwind + shadcn/ui）
-☐ 2.  Supabase 建表 migration
-☐ 3.  lib/supabase 客户端
-☐ 4.  lib/r2 S3 客户端
-☐ 5.  lib/apify 封装（含 Mock）
-☐ 6.  lib/gemini 封装（含 Mock）
-☐ 7.  API: POST /api/tasks + GET /api/tasks/:id
-☐ 8.  API: GET /api/cron/process（核心调度器 + HTTP 调用链）
-☐ 9.  Pipeline handler: fetch_metadata（启动 Apify）
-☐ 10. Pipeline handler: poll_apify_result（轮询结果 + 去重）
-☐ 11. Pipeline handler: download_video（下载到 /tmp）
-☐ 12. Pipeline handler: upload_to_r2（上传 R2）
-☐ 13. Pipeline handler: extract_audio（提取旁白）
-☐ 14. Pipeline handler: analyze_with_gemini（Gemini 分析）
-☐ 15. 首页（任务提交 + 最近任务 + 轮询 + 卡住兜底）
-☐ 16. 视频分析详情页（8 个区块 + 非终态 loading）
-☐ 17. 端到端验证：Mock 模式 → 提交 → 调用链串行 → 完成 → 详情展示
-```
-
-### Phase 2：视频库
-
-```
-☐ 18. API: GET /api/videos + GET /api/videos/:id
-☐ 19. 视频库列表页（表格 + 分页 + 筛选）
-```
-
-### Phase 3：博主监控
-
-```
-☐ 20. API: CRUD /api/creators
-☐ 21. 博主监控页（含手动触发按钮）
-```
-
-### Phase 4：关键词搜索
-
-```
-☐ 22. API: CRUD /api/keywords
-☐ 23. 关键词分析页（含手动触发按钮）
-```
-
-### Phase 5：收尾
-
-```
-☐ 24. 设置页（含 R2/Supabase 连接状态显示）
-☐ 25. API: GET/POST /api/settings
-☐ 26. README + .env.local.example
-```
+**开发顺序和任务清单以 [`docs/task.md`](./task.md) 为准**(Phase 1–5,每项含文件路径 + 验证标准)。本文档不重复列。
 
 ---
 
@@ -1274,12 +1279,12 @@ curl http://localhost:3000/api/cron/process
                      │
          ┌───────────┼───────────┐
          ▼           ▼           ▼
-    ┌────────┐ ┌────────┐ ┌──────────┐
-    │Supabase│ │  Apify │ │  Gemini  │
-    │Postgres│ │ TikTok │ │  官方API │
-    │ 500MB  │ │ Scraper│ │          │
-    │ 状态机 │ │        │ │          │
-    └────────┘ └────────┘ └──────────┘
+    ┌────────┐ ┌────────┐ ┌────────────┐
+    │Supabase│ │  Apify │ │ OpenRouter │
+    │Postgres│ │ TikTok │ │ → Gemini   │
+    │ 500MB  │ │ Scraper│ │            │
+    │ 状态机 │ │        │ │            │
+    └────────┘ └────────┘ └────────────┘
          
     ┌──────────────┐
     │ Cloudflare R2│
@@ -1299,4 +1304,6 @@ curl http://localhost:3000/api/cron/process
 | v0.2 | 2026-07-03 | 异步处理模型、状态机、轮询策略 |
 | v0.3 | 2026-07-03 | 完整 API 规格、Handler、Prompt、项目结构、部署 |
 | v0.4 | 2026-07-03 | Hobby/Pro 双模式、HTTP 调用链详解、链断裂兜底 |
-| v0.5 | 2026-07-03 | 确认方案 B：Vercel Hobby + Supabase + R2，存储从 Supabase Storage 迁移到 Cloudflare R2，移除 Pro 双模式冗余，聚焦 Hobby 7 步链路 |
+| v0.5 | 2026-07-03 | 确认方案 B:Vercel Hobby + Supabase + R2,存储从 Supabase Storage 迁移到 Cloudflare R2,移除 Pro 双模式冗余,聚焦 Hobby 7 步链路 |
+| v0.6 | 2026-07-03 | Gemini 选型从 Google AI Studio 改为 OpenRouter(用户决定);删 tech.md 14 阶段列表(以 task.md 为准);加 task.md 交叉引用;关键帧策略明确"先用封面"是 MVP 简化决策 |
+| v0.7 | 2026-07-03 | **关键变更:Gemini 视频输入改为传 R2 video URL**(完整视频理解,替代封面/MVP 简化);Pipeline 从 7 步合并为 6 步(下载+上传合一);删关键帧抽帧步骤;R2 bucket 强制 Public Access;extract-audio 改名为 extract-subtitle(明确 Apify 字幕优先 + ASR 降级);max_tokens 4096→8192(完整视频分析输出更长);**`video_downloaded` 状态标 [DEPRECATED]**,新流转直接跳过(metadata_fetched → video_processed),§7.3/§7.4 handler 合并为 `upload-video-to-r2` |
