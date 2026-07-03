@@ -16,6 +16,7 @@ import type {
   CreatorInsert,
   KeywordRow,
   KeywordInsert,
+  PipelineNextRow,
   VideoAssetInsert as _VideoAssetInsert,
 } from "@/lib/pipeline/types";
 
@@ -204,16 +205,14 @@ export async function updateTask(
 }
 
 // ============================================================
-// Phase 2 调度器占位(getNextPendingVideo 推迟到 §2.2 见 task.md)
+// Phase 2 调度器(get_next_pending_video RPC)
 // ============================================================
-export async function getNextPendingVideo(): Promise<{
-  id: string;
-  analysis_status: string;
-  tiktok_video_id: string | null;
-} | null> {
-  // TODO Phase 2:实现 supabase/migration/00002_get_next_pending_video.sql + .rpc()
-  // 等 SQL function 落地后,把 .rpc('get_next_pending_video').single() 接上
-  throw new Error("getNextPendingVideo 未实现 — 见 task.md §2.2");
+export async function getNextPendingVideo(): Promise<PipelineNextRow | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .rpc("get_next_pending_video")
+    .single();
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
+  return (data ?? null) as PipelineNextRow | null;
 }
 
 // ============================================================

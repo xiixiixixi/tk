@@ -230,3 +230,10 @@ export interface VideoDetail extends VideoRow {
 export interface VideoWithLatestAnalysis extends VideoDetail {
   latest_analysis: AnalysisResultRow | null;
 }
+
+/** get_next_pending_video RPC 返回的单行(调度器下一条待处理视频) */
+export interface PipelineNextRow {
+  id: string;
+  analysis_status: string;
+  tiktok_video_id: string | null;
+}
