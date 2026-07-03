@@ -159,19 +159,34 @@
 ## Phase 5：收尾
 
 ### 5.1 端到端验证
-- [ ] Mock 模式全流程：提交视频 → HTTP 调用链 7 步串联 → completed → 详情展示
-- [ ] 前度兜底验证：模拟某步卡住 → 60s 后前端触发兜底 → 链恢复
-- [ ] 所有 6 个页面可访问、无报错
+- [x] Mock 全流程跑通：6 步从 `new` → `completed`(Phase 2 wf 验证)
+- [x] 链断裂兜底：60s 未更新时触发 `/api/cron/process`(`pending-analysis-panel.tsx` 实现)
+- [x] 9 个页面 + 8 个 API + 4 个 cron 全部 200(Phase 4 wf 验证)
+- [x] `tasks.status` 同步:成功路径下更新到 `'completed'`(`cron/process/route.ts` 加了 `syncTaskStatus`)
+- [ ] 边界测试:非法 `task_type` / 不存在的 video ID / Apify 失败 fallback / handler 抛错后任务链终止行为
 
 ### 5.2 部署配置
-- [ ] `vercel.json` — Cron 配置（Pro 可选）
-- [ ] `.env.local.example` — 环境变量模板（含所有必填项说明）
-- [ ] `README.md` — 项目说明 + 本地开发 + 部署步骤
+- [ ] `vercel.json` — Cron 配置 + build 设置(`buildCommand` / `framework` / `regions`)
+- [ ] `.env.local.example` — 完善所有字段(已有 Supabase / Apify / OpenRouter / R2,需要补 `WHISPER_API_KEY` / `SUPABASE_PAT` / `GEMINI_MODEL` 注释)
+- [ ] `README.md` — 重写,加 Phase 1-4 完成度表 + 本地开发步骤 + 部署步骤 + 已知限制
+- [ ] `docs/tech.md` 加 "已知 stub 表" 段,明确列出:
+  - 3 个 Phase 4 cron endpoint(refresh-metrics / monitor-creators / search-keywords)— Phase 5+ 实现真正 Apify 批量抓取
+  - `extract-subtitle.ts` 的 Whisper 占位 — 当前降级到文本拼接,等 `WHISPER_API_KEY` 配后接通 OpenAI Whisper
+  - `upload-video-to-r2.ts` 真实长视频(15-30MB)— Vercel 10s 超时风险,生产期需要切片或 HLS
 
-### 5.3 清理
-- [ ] 删除测试用临时脚本 `scripts/`
-- [ ] 确认 `.gitignore` 包含 `.env.local`
-- [ ] 确认 `supabase/migrations/00001_init.sql` 与实际建表一致
+### 5.3 代码清理(技术债)
+- [ ] 修 `scripts/verify-r2.js` 的 setTimeout stale cosmetic bug(末尾"❌ 超时"误报,不影响功能但难看)
+- [ ] **可选重构**:`creator-card.tsx` + `keyword-card.tsx` 抽公共 `components/monitor/card.tsx`(各 411 行 → 1 个泛型组件 + 2 个 thin wrapper)
+- [ ] `extract-subtitle.ts` 跟 `lib/gemini/prompt.ts` 共用 fallback subtitle 逻辑(目前 `assembleFallbackSubtitle` 在 `subtitle-utils.ts`,两个 handler 都能复用,确认 promote-gemini 也用了)
+- [ ] `git ls-files scripts/` 整理:正式工具(migrate / verify)已 commit,临时探测脚本(probe-management-api 等)从 history 删了但新写的别再 git
+- [ ] 确认 `.gitignore` 包含 `.env.local` / `node_modules` / `.next/` / `supabase/.temp/`
+- [ ] `scripts/` 整理:Phase 1 wf 删了两个临时脚本,确认没遗漏
+
+### 5.4 数据库一致性(后置收尾)
+- [ ] `supabase/migrations/00002_get_next_pending_video.sql` 已写但 supabase CLI 没跟踪 — Phase 5 跑 `supabase db push` 时自动应用,但如果走 `migration up --target=` 要手动 insert supabase_migrations 行
+- [ ] 验证 `videos` 表是否需要 `error_message` 列(目前只在 `tasks` 表有,scheduler 现在 catch 异常只标 task.failed,video.failed 没法记错误原因)
+
+
 
 ---
 

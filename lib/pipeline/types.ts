@@ -121,6 +121,7 @@ export type VideoInsert = {
   // 必填(代码层强制)
   source_type: string;
   // 可选(可在调用时补)
+  source_value?: string | null; // 原始输入(URL / keyword / creator_url 等)
   tiktok_video_id?: string | null;
   original_url?: string | null;
   canonical_url?: string | null;
@@ -130,6 +131,12 @@ export type VideoInsert = {
   description?: string | null;
   publish_time?: string | null;
   duration?: number | null;
+  // 互动指标 — mock 模式下入库时填,真实 Apify 后续 fetch
+  play_count?: number;
+  like_count?: number;
+  comment_count?: number;
+  share_count?: number;
+  collect_count?: number;
   hashtags?: string[] | null;
   cover_url?: string | null;
   apify_run_id?: string | null;
