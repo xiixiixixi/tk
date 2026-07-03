@@ -152,10 +152,11 @@
 
 > 以下是从"能跑的正式版"到"敢放公网让别人用"还需要做的事。优先级从高到低。
 
-### 6.1 安全加固 🔴 必须
-- [ ] **Supabase RLS 策略** — 当前 6 张表匿名可读写(前端 anon key 裸奔),任何人能删库。需加行级权限:service_role 可写,anon 禁用或只读
-- [ ] **cron 端点鉴权** — `/api/cron/*` 无鉴权,任何人 curl 能触发,可被恶意刷爆 Apify/Gemini 额度。加 `X-Cron-Secret` header 校验(同 worker 做法)
-- [ ] **API 限流** — 同 IP 短时间多次请求拒绝(防刷),可用 Upstash Ratelimit
+### 6.1 安全加固 ✅
+- [x] **Supabase RLS 策略** — 6 张表开 RLS,anon 只读展示数据(videos/assets/analysis),敏感表(tasks/creators/keywords)全禁;REVOKE 写权限双保险;service_role 绕过(00004_rls_policies.sql,实测 anon 写删全 401)
+- [x] **cron 端点鉴权** — 4 个 cron 加 `requireCronAuth`,放行规则:X-Cron-Secret / 同源 / 开发环境;内部调用全带 secret
+- [x] **前端不再裸查 DB** — task-list 改走 `GET /api/tasks`(service_role 查),不再用 anon 直查
+- [ ] **API 限流** — 同 IP 短时间多次请求拒绝(防刷),可用 Upstash Ratelimit(可选,单人自用不急)
 
 ### 6.2 健壮性 🟠 重要
 - [ ] **handler 失败重试** — 当前抛错直接 failed,无重试。加指数退避(最多 3 次),Apify RUNNING / 网络抖动可自动恢复
