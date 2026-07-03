@@ -19,7 +19,6 @@ export const dynamic = "force-dynamic";
 const SECRET_KEYS = [
   "OPENROUTER_API_KEY",
   "APIFY_API_KEY",
-  "WHISPER_API_KEY",
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
 ] as const;

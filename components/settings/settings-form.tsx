@@ -50,9 +50,8 @@ const SECRETS: ReadonlyArray<{
   label: string;
   hint: string;
 }> = [
-  { key: "OPENROUTER_API_KEY", label: "OpenRouter", hint: "统一 AI 网关,本期调 Gemini" },
-  { key: "APIFY_API_KEY", label: "Apify", hint: "TikTok 抓取 Actor" },
-  { key: "WHISPER_API_KEY", label: "Whisper(可选)", hint: "Apify 字幕缺失时 ASR 降级" },
+  { key: "OPENROUTER_API_KEY", label: "OpenRouter", hint: "统一 AI 网关,调 Gemini(画面+音频+文本)" },
+  { key: "APIFY_API_KEY", label: "Apify", hint: "TikTok 元数据抓取" },
   { key: "R2_ACCESS_KEY_ID", label: "R2 Access Key", hint: "Cloudflare R2 写入权限" },
   { key: "R2_SECRET_ACCESS_KEY", label: "R2 Secret Key", hint: "同 Access Key 对应的密钥" },
 ];

@@ -123,7 +123,7 @@ supabase/migrations/                # 3 个 SQL
 |----|------|------|
 | `refresh-metrics` cron | stub,返回计数不刷新 | Phase 6+:接 Apify 增量 metrics API |
 | `monitor-creators` / `search-keywords` cron | Mock 模式入库假视频;真实模式未接 Apify 批量 | Phase 6+:接真实 Apify |
-| `extract-subtitle.ts` 的 Whisper | 占位,降级到 title+description+hashtags 文本拼接 | 配 `WHISPER_API_KEY` 后接 OpenAI Whisper |
+| `extract-subtitle.ts` | Apify 字幕优先,无则文本降级(title+description+hashtags) | 口播转录靠 Gemini 自身音频理解(实测能逐字转录),不需要 Whisper |
 | 长视频上传 R2 | 真实 15-30MB MP4 撞 Vercel 10s 超时风险 | 生产期切片或 HLS |
 | RLS | 第一版匿名可访问,无用户系统 | 后续加 Supabase Auth + RLS |
 

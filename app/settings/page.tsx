@@ -26,7 +26,6 @@ export default async function SettingsPage() {
       env: {
         OPENROUTER_API_KEY: { present: false },
         APIFY_API_KEY: { present: false },
-        WHISPER_API_KEY: { present: false },
         R2_ACCESS_KEY_ID: { present: false },
         R2_SECRET_ACCESS_KEY: { present: false },
       },

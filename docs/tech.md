@@ -16,8 +16,7 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 + Cloudflare R2（视频文件 + 封面图,公开可读）
 + Apify（TikTok 元数据抓取）
 + Railway Worker（视频下载:yt-dlp 拉真实 MP4 → 传 R2）
-+ OpenRouter（统一 AI 网关,本期调 Gemini 模型,视频走 base64 内联）
-+ Whisper(OpenAI 直连,Apify 字幕缺失时 ASR 降级)
++ OpenRouter（统一 AI 网关,调 gemini-3.5-flash,视频走 base64 内联,自带音频理解）
 ```
 
 > **v0.8 架构变更:为什么加 Railway Worker**
@@ -87,7 +86,7 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 Step 1a: 启动 Apify Actor              耗时 ~1s   状态 → apify_started
 Step 1b: 轮询 Apify 结果 + 字幕         耗时 ~3s   状态 → metadata_fetched
 Step 2:  调 Railway Worker 下载 MP4 + 传 R2  耗时 ~8s   状态 → video_processed
-Step 3:  提取旁白(Apify 字幕,无则 Whisper)  耗时 ~1-5s   状态 → audio_extracted
+Step 3:  提取字幕(Apify 字幕优先,无则文本降级)  耗时 ~1s   状态 → audio_extracted
 Step 4:  组装分析包 + Gemini 分析(视频 base64 内联)  耗时 ~8s   状态 → analyzing
 Step 5:  保存结果到 Supabase           耗时 ~1s   状态 → completed
 ```
@@ -95,7 +94,7 @@ Step 5:  保存结果到 Supabase           耗时 ~1s   状态 → completed
 **v0.8 关键变化**(相对 v0.7):
 - Step 2 从"Apify downloadUrl 直传"改为**调 Railway Worker**(yt-dlp 解析真实 mp4 → 传 R2)。因为 Apify 反爬升级后不返回直链
 - Gemini 输入从"R2 视频 URL"改为"**base64 内联**"(OpenRouter 不支持任意 mp4 URL,只支持 YouTube 链接 + base64 data URL)
-- Whisper 独立成 `lib/whisper/client.ts`,Apify 字幕空时 ASR 降级
+- Whisper 独立成 `lib/whisper/client.ts`,Apify 字幕空时 ASR 降级 ~~(v0.8 后续验证后已移除:Gemini 自身能听视频音频,Whisper 多余)~~
 
 ### 2.4 HTTP 调用链：解决 Cron 缺失
 
@@ -839,17 +838,20 @@ POST   /api/settings      — 保存设置
 
 ```
 输入：video 记录（status = 'video_processed'）
-输出：完整旁白文本 + 时间戳分段
-单步耗时：~1s（Apify 字幕）/ ~5s（ASR 降级）
+输出：字幕文本(供 Gemini 分析时作辅助上下文)
+单步耗时：~1s
 
 流程：
-1. 检查 Apify 数据中是否有字幕字段（textExtra / subtitles）
-2. 有 → 拼接为纯文本 + 记录分段 INSERT video_assets (asset_type='subtitle')
-3. 没有 → 检查 env WHISPER_API_KEY 是否配置:
-   - 已配置 → 调用 ASR(OpenAI Whisper API)对 R2 视频 URL 转录,~5s
-   - 未配置 → 降级到文本拼接:用视频标题 + description + hashtags 拼成"推测旁白文本"(质量低但稳定免费,不阻塞流程)
+1. 检查 Apify 数据中是否有字幕字段（textExtra）
+2. 有 → 拼接为纯文本,INSERT video_assets (asset_type='subtitle')
+3. 没有 → 文本降级:标题 + description + hashtags 拼接
 4. status → audio_extracted
 ```
+
+**v0.8 重要变更:不再用 Whisper ASR**。
+实测 gemini-3.5-flash 通过 `video_url` 接收视频时,能同时理解画面 + 音频轨
+(逐字转录口播 + 识别背景音乐),单独的 Whisper 转录是多余的。
+Gemini 在 Step 4 自己"听"视频,这一步只负责补充 Apify 字幕(如有)作为辅助。
 
 ### 7.6 analyze-gemini — AI 分析(走 OpenRouter 传 R2 视频 URL)
 
@@ -1244,8 +1246,7 @@ OPENROUTER_API_KEY=
 GEMINI_MODEL=google/gemini-3.5-flash   # 支持 text+image+video+audio 全模态
 MOCK_GEMINI=false                      # true = 走 Mock 数据
 
-# OpenAI Whisper(可选,ASR 降级;不配就走文本拼接)
-WHISPER_API_KEY=
+# 注:不需要 WHISPER_API_KEY —— gemini-3.5-flash 通过视频输入自带音频理解能力
 ```
 
 Railway Worker 端(在 Railway Dashboard 配):

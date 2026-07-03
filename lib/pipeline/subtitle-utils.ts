@@ -3,10 +3,9 @@ import type { VideoRow } from "@/lib/pipeline/types";
 /**
  * 降级旁白文本组装
  *
- * 没有真实字幕(Apify 没返 + WHISPER_API_KEY 也没配)时,
- * 把 video 的标题、描述、hashtags 拼成一段"推测旁白"给 Gemini 当上下文。
- *
- * 与 lib/gemini/prompt.ts 的 buildAnalysisPrompt 里的 subtitleText 行为保持一致。
+ * 没有 Apify 字幕时,把 video 的标题、描述、hashtags 拼成一段"推测旁白"。
+ * 注意:这只是辅助上下文,Gemini 通过视频本身就能听到完整口播(实测验证),
+ *      这里的拼接主要是给没视频文件的降级场景用。
  */
 export function assembleFallbackSubtitle(video: VideoRow): string {
   const parts: string[] = [];
