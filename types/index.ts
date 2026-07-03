@@ -177,6 +177,13 @@ export interface ApifyTikTokResult {
     downloadUrl?: string; // ⚠️ 新版常为空,改看 mediaUrls
     height?: number;
     width?: number;
+    subtitleLinks?: Array<{
+      language?: string;
+      downloadLink?: string;
+      source?: string; // ASR(自动语音识别) | MT(机器翻译)
+      sourceUnabbreviated?: string;
+    }>;
+    transcriptionLink?: string | null;
   };
   webVideoUrl: string;
   diggCount: number; // 点赞
