@@ -82,6 +82,13 @@ export async function GET() {
       await triggerNext();
     }
 
+    // 🟢 同步关联 task.status 到终态(Phase 3 review 修复)
+    // 之前只有失败路径会标 task.status,成功路径不标 → tasks.status 永远 'pending'
+    // 现在:终态(completed / duplicate / failed)统一标 task 状态
+    if (nextStatus === "completed" || nextStatus === "duplicate") {
+      await syncTaskStatus(video.id, "completed", null);
+    }
+
     return NextResponse.json({
       processed: 1,
       video_id: video.id,
@@ -108,5 +115,31 @@ async function failVideoTasks(videoId: string, errorMessage: string): Promise<vo
       .neq("status", "failed");
   } catch (e) {
     console.error("updateTask(failed) error:", e);
+  }
+}
+
+/**
+ * 同步关联 task 状态(成功路径用)
+ * - 终态成功(completed / duplicate)→ status='completed',current_step=null
+ * - DB 出错不外抛,避免掩盖原始错误
+ */
+async function syncTaskStatus(
+  videoId: string,
+  status: "completed" | "failed",
+  currentStep: string | null
+): Promise<void> {
+  try {
+    await getSupabaseAdmin()
+      .from("tasks")
+      .update({
+        status,
+        current_step: currentStep,
+        ...(status === "failed" ? {} : { error_message: null }), // 成功清掉历史 error
+      })
+      .eq("related_video_id", videoId)
+      // 已有任务失败不覆盖(因为失败的 error_message 更重要)
+      .in("status", ["pending", "processing"]);
+  } catch (e) {
+    console.error("syncTaskStatus error:", e);
   }
 }
