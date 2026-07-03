@@ -1,8 +1,8 @@
 FROM node:20-slim
 
-# 装 yt-dlp(从 GitHub release,版本固定避免反反爬失效)
-# + ffmpeg(mp4 merge 需要)+ curl(健康检查)
+# 装 ca-certificates(优先,否则 curl HTTPS 证书校验失败)+ ffmpeg + curl + python3(yt-dlp 依赖)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     ffmpeg \
     curl \
     python3 \
