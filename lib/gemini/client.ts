@@ -7,11 +7,11 @@ import type { AnalysisOutput } from "@/types";
  *
  * v0.8:视频走 base64 内联(OpenRouter 的 Gemini 不支持任意 mp4 URL,只支持 YouTube+base64)
  *      有视频时加 input_modalities 声明,否则 Gemini 返回 INVALID_ARGUMENT
- *      默认模型改为 gemini-2.5-flash(支持视频输入)
+ *      默认模型:google/gemini-3.5-flash(支持 text+image+video+audio 全模态)
  */
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "google/gemini-3.5-flash";
 const MAX_OUTPUT_TOKENS = 8192;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // Gemini 视频上限 25MB
 
@@ -61,10 +61,8 @@ export async function analyzeVideo(input: AnalyzeVideoInput): Promise<AnalysisOu
     response_format: { type: "json_object" },
     max_tokens: MAX_OUTPUT_TOKENS,
   };
-  // 有视频时声明视频模态(OpenRouter 要求,Gemini 不声明会 400 INVALID_ARGUMENT)
-  if (hasVideo) {
-    body.input_modalities = ["image", "video", "text"];
-  }
+  // 注:gemini-3.5-flash 通过 video_url + base64 传视频时,不需要显式声明 input_modalities。
+  // 实测(2026-07):加了 input_modalities 反而偶尔触发 400,不加最稳定。
 
   const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: "POST",
