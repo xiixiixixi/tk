@@ -169,9 +169,15 @@ export async function POST(req: Request) {
   //     (Vercel Hobby 10s 函数超时,await 必然 abort;之前 3s abort 就是误把慢端点也 await 了)
   const isSlow = action === "monitor-creators" || action === "search-keywords";
 
+  // 服务端内部调 cron,带 X-Cron-Secret 通过鉴权
+  const cronSecret = process.env.CRON_SECRET;
+  const cronHeaders: Record<string, string> = cronSecret
+    ? { "x-cron-secret": cronSecret }
+    : {};
+
   if (isSlow) {
     // fire-and-forget:不阻塞 POST 返回。fetch 失败只记日志,不影响"已触发"的回执。
-    void fetch(url, { method: "GET", cache: "no-store" }).catch((e) => {
+    void fetch(url, { method: "GET", cache: "no-store", headers: cronHeaders }).catch((e) => {
       console.error(`[api/settings] trigger ${action} (fire-and-forget) error:`, e);
     });
     return NextResponse.json({
@@ -184,7 +190,7 @@ export async function POST(req: Request) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
+    const res = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal, headers: cronHeaders });
     clearTimeout(timer);
 
     let result: unknown = null;

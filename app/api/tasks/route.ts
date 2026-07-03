@@ -1,4 +1,7 @@
 import {
+  getSupabaseAdmin,
+} from "@/lib/supabase/client";
+import {
   insertTask,
   insertVideo,
   updateTask,
@@ -41,6 +44,32 @@ interface CreateTaskRequestBody {
   task_type: TaskType;
   input_value: string;
   options?: Record<string, unknown>;
+}
+
+/**
+ * GET /api/tasks?limit=10
+ * 最近任务列表(供首页 task-list 用,service_role 查,绕过 RLS)。
+ * JOIN videos 表拿真实分析进度(analysis_status),前端不再用 anon key 直查。
+ */
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
+
+    const { data, error } = await getSupabaseAdmin()
+      .from("tasks")
+      .select(
+        "id, task_type, input_value, status, created_at, videos!related_video_id(id, analysis_status, title)"
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return Response.json({ tasks: data ?? [] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "未知错误";
+    return Response.json({ error: `查询任务列表失败: ${message}` }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -98,10 +127,13 @@ export async function POST(request: Request) {
 
     // ---- 触发后台处理(fire-and-forget,不 await) ----
     // 用默认 GET(不是 POST):/api/cron/process 只 export GET handler,
-    // 用 POST 会返 405 Method Not Allowed。
+    // 用 POST 会返 405 Method Not Allowed。带 X-Cron-Secret 通过鉴权。
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (appUrl) {
-      void fetch(`${appUrl}/api/cron/process`).catch(() => {
+      const secret = process.env.CRON_SECRET;
+      void fetch(`${appUrl}/api/cron/process`, {
+        headers: secret ? { "x-cron-secret": secret } : {},
+      }).catch(() => {
         // cron 触发失败不影响主流程
       });
     }

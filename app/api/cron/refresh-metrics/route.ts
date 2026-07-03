@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { requireCronAuth } from "@/lib/auth/cron";
 import {
   getRunDataset,
   getRunStatus,
@@ -23,7 +24,10 @@ export const dynamic = "force-dynamic";
  */
 const MAX_REFRESH_PER_RUN = 5;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const authFail = requireCronAuth(req);
+  if (authFail) return authFail;
+
   const isMock = shouldUseApifyMock();
 
   // 取最近 N 条 completed 视频(有 canonical_url 才能重抓)

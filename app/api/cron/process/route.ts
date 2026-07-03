@@ -6,6 +6,7 @@ import {
   updateVideoStatus,
 } from "@/lib/supabase/queries";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { requireCronAuth } from "@/lib/auth/cron";
 import type { VideoRow, VideoUpdate } from "@/lib/pipeline/types";
 import type { AnalysisStatus } from "@/types";
 
@@ -38,6 +39,14 @@ const HANDLERS: Partial<Record<string, PipelineHandler>> = {
 };
 
 /**
+ * 服务端内部调 cron 时带的 secret header(放行规则 1)
+ */
+function cronSecretHeader(): Record<string, string> {
+  const secret = process.env.CRON_SECRET;
+  return secret ? { "x-cron-secret": secret } : {};
+}
+
+/**
  * 链式调用的"接力棒":fire-and-forget 触发下一轮 process。
  * 失败只记日志,不影响本轮返回(链断裂兜底)。
  */
@@ -45,13 +54,17 @@ async function triggerNext(): Promise<void> {
   try {
     await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/process`, {
       cache: "no-store",
+      headers: cronSecretHeader(),
     });
   } catch (e) {
     console.error("chain error:", e);
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const authFail = requireCronAuth(req);
+  if (authFail) return authFail;
+
   const next = await getNextPendingVideo();
   if (!next) {
     return NextResponse.json({ processed: 0, message: "no pending tasks" });

@@ -7,21 +7,19 @@ import { Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/tasks/status-badge";
-import { getSupabaseBrowser } from "@/lib/supabase/browser-client";
 import { truncate, formatDateTime } from "@/lib/utils";
 import type { VideoListItem } from "@/lib/pipeline/types";
 
 /**
  * 最近任务列表 — JOIN videos 显示真实进度
  *
- * 关键设计(Phase 3 review 修复):
+ * 关键设计:
  * - 不显示 task.status(Pipeline 不更新这个字段)
- * - 而显示 videos.analysis_status(实际分析进度,通过 lib/pipeline/status-badge 的样式)
+ * - 而显示 videos.analysis_status(实际分析进度,通过 StatusBadge 样式)
  * - task.status 仅用作 grouping(后台逻辑),用户看不到
  *
- * 数据流:直接用 Supabase Browser 客户端拉取。
- * (原因:app/api/tasks/route.ts 只 export POST,没有 GET handler;
- *   如果改用 fetch('/api/tasks?limit=10') 会拿到 405。)
+ * 数据流:走 /api/tasks GET(service_role 查,绕过 RLS)。
+ * RLS 安全加固后,前端 anon key 不能直查 tasks 表,必须走 API。
  *
  * 监听 window 'tasks:changed' 事件,提交新任务后自动 refetch。
  */
@@ -70,20 +68,16 @@ export function TaskList() {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data, error } = await getSupabaseBrowser()
-        .from("tasks")
-        // JOIN videos table — 关键:从 videos.analysis_status 拿真实进度
-        .select(
-          "id, task_type, input_value, status, created_at, videos!related_video_id(id, analysis_status, title)"
-        )
-        .order("created_at", { ascending: false })
-        .limit(RECENT_LIMIT);
-      if (error) {
-        setLoadError(error.message);
+      // 走 API(service_role 查,JOIN videos 拿真实 analysis_status)
+      const res = await fetch(`/api/tasks?limit=${RECENT_LIMIT}`, { cache: "no-store" });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setLoadError(err.error ?? `加载失败 (HTTP ${res.status})`);
         setTasks([]);
         return;
       }
-      setTasks((data ?? []) as RecentTaskWithVideo[]);
+      const payload = (await res.json()) as { tasks?: RecentTaskWithVideo[] };
+      setTasks(payload.tasks ?? []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "加载失败");
       setTasks([]);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { requireCronAuth } from "@/lib/auth/cron";
 import { getVideoByTiktokId, insertVideo } from "@/lib/supabase/queries";
 import {
   getRunDataset,
@@ -22,7 +23,10 @@ export const dynamic = "force-dynamic";
  *
  * 入库后调 /api/cron/process 让 Phase 2 调度器接手分析。
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const authFail = requireCronAuth(req);
+  if (authFail) return authFail;
+
   const isMock = shouldUseApifyMock();
 
   const { data: keywords, error: keywordsError } = await getSupabaseAdmin()
@@ -87,8 +91,10 @@ export async function GET() {
     .eq("status", "active");
 
   if (created > 0) {
+    const secret = process.env.CRON_SECRET;
     void fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/process`, {
       cache: "no-store",
+      headers: secret ? { "x-cron-secret": secret } : {},
     }).catch((e) => console.error("trigger pipeline error:", e));
   }
 
