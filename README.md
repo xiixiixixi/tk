@@ -4,7 +4,7 @@
 
 粘贴一条 TikTok 链接 → 系统抓取视频 + 字幕 → Gemini 拆解出 8 区块脚本结构(钩子 / 分镜 / 口播 / 画面 / 爆点 / 可复刻脚本)。也可以挂监控博主、关键词,新视频自动入库分析。
 
-> 技术架构与设计决策见 [`docs/tech.md`](./docs/tech.md),开发任务清单见 [`docs/task.md`](./docs/task.md)。
+> 技术架构与设计决策见 [`docs/tech.md`](./docs/tech.md),开发任务清单见 [`docs/task.md`](./docs/task.md),Railway Worker 部署见 [`docs/railway-worker.md`](./docs/railway-worker.md)。
 
 ---
 
