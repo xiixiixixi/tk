@@ -36,6 +36,7 @@ export interface VideoRow {
   analysis_status: string;
   apify_run_id: string | null;
   last_metric_update_time: string | null;
+  error_message: string | null; // 00003: failed 时的错误原因,completed 时为 null
   created_at: string;
   updated_at: string;
 }
@@ -151,6 +152,7 @@ export type VideoUpdate = Partial<Omit<VideoInsert, "source_type">> & {
   collect_count?: number;
   video_file_url?: string | null;
   last_metric_update_time?: string | null;
+  error_message?: string | null; // 00003: failed 写入原因,completed 清空
 };
 
 export type VideoAssetInsert = {

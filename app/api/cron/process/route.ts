@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getNextPendingVideo,
   getVideoById,
+  updateVideo,
   updateVideoStatus,
 } from "@/lib/supabase/queries";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
@@ -87,6 +88,10 @@ export async function GET() {
     // 现在:终态(completed / duplicate / failed)统一标 task 状态
     if (nextStatus === "completed" || nextStatus === "duplicate") {
       await syncTaskStatus(video.id, "completed", null);
+      // 成功终态清空历史 error_message(重试成功的场景)
+      if (video.error_message) {
+        await updateVideo(video.id, { error_message: null });
+      }
     }
 
     return NextResponse.json({
@@ -98,7 +103,10 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await updateVideoStatus(video.id, "failed");
+    // 失败原因同时记到 videos.error_message(详情页可见)和 tasks.error_message
+    await updateVideoStatus(video.id, "failed", {
+      error_message: message.slice(0, 500),
+    });
     await failVideoTasks(video.id, message);
     // failed 是终态,不依赖 nextStatus,链也终止 → 不需要再 triggerNext
     return NextResponse.json({ processed: 1, video_id: video.id, error: message });

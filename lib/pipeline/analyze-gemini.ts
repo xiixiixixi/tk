@@ -1,5 +1,6 @@
 import { analyzeVideo } from "@/lib/gemini/client";
-import { insertAnalysis, updateVideo } from "@/lib/supabase/queries";
+import { insertAnalysis, updateVideo, listVideoAssets } from "@/lib/supabase/queries";
+import { assembleFallbackSubtitle } from "@/lib/pipeline/subtitle-utils";
 import type { VideoRow, VideoUpdate } from "@/lib/pipeline/types";
 import type { AnalysisStatus } from "@/types";
 
@@ -8,16 +9,16 @@ const DEFAULT_MODEL = "google/gemini-3.5-flash";
 /**
  * Pipeline Step 4: 组装分析包 + 调 Gemini
  *
- * - 从 video 字段组装 gemini.analyzeVideo 的入参
- * - subtitleText 重新组装(title + description + hashtags)
- * - 把整段 R2 视频 URL 传给 Gemini(v0.7 改:不抽关键帧)
+ * - subtitleText 优先读 extract-subtitle 存入 video_assets 的字幕(可能含 Whisper 转录)
+ *   读不到才降级到文本拼接
+ * - 把整段 R2 视频 URL 传给 Gemini(v0.7:完整视频理解)
  * - 写入 analysis_results(analysis_version=1)
  * - 把 video 标为 completed
  */
 export default async function analyzeWithGemini(
   video: VideoRow
 ): Promise<{ nextStatus: AnalysisStatus; extra?: Partial<VideoUpdate> }> {
-  const subtitleText = assembleSubtitleText(video);
+  const subtitleText = await getSubtitleForAnalysis(video);
   const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
   const output = await analyzeVideo({
@@ -65,15 +66,26 @@ export default async function analyzeWithGemini(
 }
 
 /**
- * 推测旁白:title + description + hashtags
- * 与 extract-subtitle.ts 的降级逻辑保持一致
+ * 取分析用的字幕文本
+ *
+ * 优先级:
+ *   1. extract-subtitle 存入 video_assets 的 subtitle(可能含 Apify 字幕 / Whisper 转录)
+ *   2. 读不到 → 文本降级(title + description + hashtags)
  */
-function assembleSubtitleText(video: VideoRow): string {
-  const parts = [video.title, video.description];
-  if (video.hashtags && video.hashtags.length > 0) {
-    parts.push(video.hashtags.join(" "));
+async function getSubtitleForAnalysis(video: VideoRow): Promise<string> {
+  try {
+    const assets = await listVideoAssets(video.id);
+    // 取最新的 subtitle asset(extract-subtitle 用 description 字段存文本)
+    const subtitleAsset = [...assets]
+      .reverse()
+      .find((a) => a.asset_type === "subtitle" && a.description);
+    if (subtitleAsset?.description && subtitleAsset.description !== "(无旁白内容)") {
+      return subtitleAsset.description;
+    }
+  } catch (err) {
+    console.warn(`[analyze-gemini] 读 subtitle asset 失败,走降级:`, err);
   }
-  return parts.filter(Boolean).join(" ").trim();
+  return assembleFallbackSubtitle(video);
 }
 
 /**

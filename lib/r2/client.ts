@@ -59,17 +59,31 @@ export async function deleteFromR2(key: string): Promise<void> {
 }
 
 /**
- * 开发期:返回 .r2.dev 或自定义域名公开 URL(走 Public Access)
- * 生产期:留空该函数,用 getR2PresignedUrl() 替代
+ * 返回 R2 对象的公开访问 URL(走 Public Access)
+ *
+ * ⚠️ R2 公开域名有两种格式,函数自动适配:
+ *   - .r2.dev 开发域名:https://pub-xxx.r2.dev/{key}  ← 不含 bucket 名
+ *   - S3 endpoint 风格:https://account.r2.cloudflarestorage.com/{bucket}/{key}
+ *   - 自定义域名:https://cdn.xxx.com/{key}  ← 通常不含 bucket 名
+ *
+ * 判断:如果 base 末尾已经是 bucket 名,不再重复拼接;否则补上。
+ * 最稳妥的配法:R2_PUBLIC_URL 直接填到"能访问到 bucket 根"的完整前缀。
  */
 export function getR2PublicUrl(key: string): string {
   const base = process.env.R2_PUBLIC_URL;
   if (!base) {
     throw new Error(
-      "R2_PUBLIC_URL 缺失。开发期填 .r2.dev,生产期改用 getR2PresignedUrl()"
+      "R2_PUBLIC_URL 缺失。开发期填 .r2.dev 完整前缀,生产期改用 getR2PresignedUrl()"
     );
   }
-  return `${base.replace(/\/$/, "")}/${bucket()}/${key}`;
+  const cleanBase = base.replace(/\/$/, "");
+  const bkt = bucket();
+  // base 末尾已含 bucket 名 → 只拼 key(适用于 S3 endpoint 风格)
+  if (cleanBase.endsWith(`/${bkt}`)) {
+    return `${cleanBase}/${key}`;
+  }
+  // 否则不含 bucket(.r2.dev / 自定义域名)→ 直接拼 key
+  return `${cleanBase}/${key}`;
 }
 
 /**

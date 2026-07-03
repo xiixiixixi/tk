@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase cli 本地缓存(项目 ref / pooler url 等,不该进版本库)
+supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -162,26 +162,37 @@ export interface AnalysisOutput {
 export interface ApifyTikTokResult {
   id: string; // tiktok video id
   text: string; // 标题/描述
-  createTime: string; // ISO 时间
+  textLanguage?: string; // 内容语言
+  createTime: string; // 数字时间戳或 ISO(Apify 新版 createTimeISO 更稳)
+  createTimeISO?: string;
   authorMeta: {
     id: string;
     name: string;
-    nickName: string;
+    nickName?: string;
     avatar?: string;
   };
   videoMeta: {
     duration: number; // 秒
     coverUrl?: string;
-    downloadUrl?: string;
+    downloadUrl?: string; // ⚠️ 新版常为空,改看 mediaUrls
+    height?: number;
+    width?: number;
   };
   webVideoUrl: string;
-  diggCount: number;
+  diggCount: number; // 点赞
   shareCount: number;
   commentCount: number;
   playCount: number;
-  collectCount?: number;
+  collectCount?: number; // 收藏(顶层,不在 videoMeta)
+  repostCount?: number;
   hashtags?: Array<{ name: string }>;
-  textExtra?: Array<{ text: string }>; // 可能含字幕
+  textExtra?: Array<{ text: string }>; // ⚠️ 新版基本为空,字幕靠 Whisper
+  mediaUrls?: string[]; // ⚠️ 视频/图片地址(downloadUrl 为空时用这个)
+  submittedVideoUrl?: string; // 备选视频地址
+  commentsDatasetUrl?: string; // 评论数据集(本期不用)
+  // Apify 失败时返回的字段
+  error?: string;
+  errorCode?: string;
 }
 
 // ============================================================

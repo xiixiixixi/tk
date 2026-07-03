@@ -14,10 +14,19 @@
 Vercel Hobby（网页 + API + HTTP 调用链）
 + Supabase（Postgres 数据库 + 去重 + 状态机）
 + Cloudflare R2（视频文件 + 封面图,公开可读）
-+ Apify（TikTok 抓取 + 字幕）
-+ OpenRouter（统一 AI 网关,本期调 Gemini 模型）
-+ Gemini 视频输入 = R2 公开 URL(完整视频理解,画面+音频)
++ Apify（TikTok 元数据抓取）
++ Railway Worker（视频下载:yt-dlp 拉真实 MP4 → 传 R2）
++ OpenRouter（统一 AI 网关,本期调 Gemini 模型,视频走 base64 内联）
++ Whisper(OpenAI 直连,Apify 字幕缺失时 ASR 降级)
 ```
+
+> **v0.8 架构变更:为什么加 Railway Worker**
+> Apify `clockworks/tiktok-scraper` 实测(2026-07)在反爬升级后**不返回视频 mp4 直链**
+> (`downloadUrl`/`mediaUrls` 均空,`downloadVideos:true` 把文件存内部 storage 取不到)。
+> TikTok 视频文件需要 `yt-dlp` 实时解析下载,而 yt-dlp 是二进制工具 + 频繁更新反反爬,
+> Vercel Hobby serverless(10s 超时、无持久 FS)跑不了。
+> 解决:在 Railway 上跑一个常驻 Node + yt-dlp 微服务,Vercel 通过 HTTP 调用它(像调 Apify 一样)。
+> 这样既保留 Vercel 免费档,又拿到真实视频文件。
 
 ### 1.2 为什么这个组合
 
@@ -26,6 +35,10 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 | Vercel Hobby | 100GB 带宽、10 万次函数/月 | ✅ 够用，10 秒超时用 HTTP 调用链解决 |
 | Supabase | 500MB 数据库、5GB 带宽/月 | ✅ 只存结构化数据，绰绰有余 |
 | R2 | 10GB 存储、免流量费 | ✅ 存几百个 MP4 没问题，读文件不花钱 |
+| Railway Worker | $5 试用额度,之后按用量(~$5/月) | ✅ 跑 yt-dlp 下载视频,常驻小服务很便宜 |
+| Apify | 按 credit 计费 | ✅ 元数据抓取 ~$0.00025/次,很便宜 |
+| OpenRouter | 按 token 计费 | ✅ Gemini flash ~$0.001/次分析 |
+| OpenAI Whisper | 按分钟计费($0.006/分钟) | ✅ 短视频几分钱 |
 
 ### 1.3 不做的事
 
@@ -33,11 +46,11 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 ❌ 浏览器插件
 ❌ 自研 TikTok 爬虫
 ❌ 完整 SaaS 权限系统
-❌ 复杂任务队列（Inngest / QStash）
+❌ 复杂任务队列（Inngest / QStash）— Railway worker 用同步 HTTP 即可
 ❌ 评论深度分析
 ❌ Vercel Pro/Enterprise（10s 超时已用 HTTP 调用链解决,无付费需要）
 ❌ Google AI Studio 直接调 Gemini(走 OpenRouter 统一网关,便于切换模型)
-❌ ffmpeg 服务端抽帧（v0.7 改用 R2 视频 URL 直传给 Gemini,完整视频理解）
+❌ 在 Vercel serverless 里跑 yt-dlp（无持久 FS + 10s 超时 + 反爬更新频繁,放 Railway worker）
 ```
 
 ### 1.4 MVP 成功定义
@@ -73,17 +86,16 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 ```
 Step 1a: 启动 Apify Actor              耗时 ~1s   状态 → apify_started
 Step 1b: 轮询 Apify 结果 + 字幕         耗时 ~3s   状态 → metadata_fetched
-Step 2:  下载 MP4 + 封面到 R2          耗时 ~10s  状态 → video_processed（合并原 step 2/3,直接上传）
-Step 3:  提取旁白(Apify 字幕,无则 ASR)  耗时 ~1s   状态 → audio_extracted
-Step 4:  组装分析包 + Gemini 分析(传 R2 视频 URL)  耗时 ~8s   状态 → analyzing
+Step 2:  调 Railway Worker 下载 MP4 + 传 R2  耗时 ~8s   状态 → video_processed
+Step 3:  提取旁白(Apify 字幕,无则 Whisper)  耗时 ~1-5s   状态 → audio_extracted
+Step 4:  组装分析包 + Gemini 分析(视频 base64 内联)  耗时 ~8s   状态 → analyzing
 Step 5:  保存结果到 Supabase           耗时 ~1s   状态 → completed
 ```
 
-**v0.7 关键变化**(相对 v0.6 7 步):
-- Step 2 + Step 3 合并:**下载 + 上传 R2 一气呵成**,省一次 /tmp 中转
-- **删除关键帧抽帧步骤**(v0.6 错误把"封面图当唯一帧"当 MVP 简化,实际可走完整视频)
-- **删除画面文字独立提取步骤**(Gemini 看完整视频自己读)
-- Gemini 输入 = R2 视频 URL(完整视频理解) + 旁白 + 元数据
+**v0.8 关键变化**(相对 v0.7):
+- Step 2 从"Apify downloadUrl 直传"改为**调 Railway Worker**(yt-dlp 解析真实 mp4 → 传 R2)。因为 Apify 反爬升级后不返回直链
+- Gemini 输入从"R2 视频 URL"改为"**base64 内联**"(OpenRouter 不支持任意 mp4 URL,只支持 YouTube 链接 + base64 data URL)
+- Whisper 独立成 `lib/whisper/client.ts`,Apify 字幕空时 ASR 降级
 
 ### 2.4 HTTP 调用链：解决 Cron 缺失
 
@@ -180,6 +192,49 @@ completed              — 分析完成（终态）
 重复视频     → duplicate — 重复（终态）
 用户重新分析 → pending_analysis → 新建 analysis_version → 回到 new
 ```
+
+### 2.8 Railway Worker —— 视频下载微服务
+
+**为什么独立服务**:yt-dlp 是二进制 + 频繁更新反反爬,Vercel serverless(无持久 FS、10s 超时)跑不了。放 Railway 常驻 Node 进程,Vercel 通过 HTTP 调用(和调 Apify 一样的模式)。
+
+**架构**:
+```
+Vercel (Step 2 handler)
+  │  POST { url, r2Key } https://<worker>.up.railway.app/download
+  ▼
+Railway Worker (Node + yt-dlp)
+  │  1. yt-dlp 解析 TikTok URL → 拿真实 mp4 直链
+  │  2. 下载 mp4 到内存
+  │  3. 用 R2 凭据上传到 {r2Key}
+  ▼
+返回 { r2Url, size, duration } 给 Vercel
+```
+
+**Worker 职责(单一)**:
+- 输入:`{ url: TikTok 视频页 URL, r2Key: R2 存储路径 }`
+- 输出:`{ r2Url: R2 公开 URL, size: 字节数, duration: 秒 }`
+- 错误:`{ error: "...", errorCode: "DOWNLOAD_FAILED" | "VIDEO_NOT_FOUND" }`
+
+**为什么 worker 自己传 R2(而不是返回 mp4 给 Vercel)**:
+- 视频 5-30MB,走 Vercel 中转会撞 10s 超时 + 浪费带宽
+- worker 直接用 R2 凭据上传,Vercel 只收一个 URL 字符串
+
+**Vercel 侧的超时对策**:
+- Step 2 handler 调 worker 用 `AbortController` 设 50s 超时
+- ⚠️ 这会超过 Vercel Hobby 10s 限制 → Step 2 需要拆成两步:
+  - `Step 2a`:POST 触发 worker,拿到 `jobId` 立即返回(状态 → `downloading`)
+  - `Step 2b`:轮询 `GET /status/{jobId}`,完成才推进(状态 → `video_processed`)
+- 或简化方案:worker 同步等待(短视频 <8s 能跑完),长视频超时标 failed 后续重试
+
+**Worker 技术栈**:
+- Node.js 20 + Express(或 Hono)
+- `yt-dlp`(系统级安装,Railway Dockerfile 里 `apt-get install` 或用 `youtube-dl-exec` npm 包)
+- `@aws-sdk/client-s3`(直接传 R2)
+- 无状态、可水平扩展(每个请求独立)
+
+**安全**:
+- Worker 暴露在公网,用 `WORKER_SECRET` 共享密钥鉴权(Vercel 请求头带 `X-Worker-Secret`)
+- R2 凭据只配在 worker 端,Vercel 不直接传文件
 
 ---
 
@@ -751,32 +806,32 @@ POST   /api/settings      — 保存设置
 6. status → metadata_fetched
 ```
 
-### 7.3 ~~download-video~~ → **upload-video-to-r2** (v0.7 合并)
+### 7.3 upload-video-to-r2 — 调 Railway Worker 下载视频
 
-**[DEPRECATED since v0.7]** v0.6 的 `download-video` + `upload-to-r2` 两步已合并为 `upload-video-to-r2`,原 handler 不再独立存在。
-
-新 handler 描述：
+**[v0.8 重写]** Apify 反爬升级后不返回直链,改为调 Railway Worker(yt-dlp)下载。
 
 ```
 输入：video 记录（status = 'metadata_fetched'）
 输出：videos.video_file_url + videos.cover_url 已更新为 R2 公开 URL
-单步耗时：~10s（v0.7 合并后,无 /tmp 中转）
+单步耗时：~8s（worker 同步下载 + 传 R2）
 
 流程：
-1. 从 Apify 数据中获取视频下载链接 + 封面图 URL
-2. 并行下载 MP4(Buffer)+ 封面图(Buffer)到内存
-3. 立即上传 R2:{video_id}/video.mp4 + {video_id}/cover.jpg
-4. 更新 video_assets 表(asset_type='mp4' / 'cover',asset_url=R2 公开 URL)
-5. 更新 videos.cover_url 和 videos.video_file_url
-6. status → video_processed(直接跳过 video_downloaded,合并到 video_processed)
+1. POST { url: video.webVideoUrl, r2Key: "{video_id}/video.mp4" } 到 Railway Worker
+   （请求头带 X-Worker-Secret 鉴权）
+2. Worker 用 yt-dlp 解析真实 mp4 → 下载 → 直接传 R2 → 返回 { r2Url, size }
+3. 封面图：从 video.cover_url（Apify 已拿到）直接下载传 R2（小文件,Vercel 自己做）
+4. 更新 video_assets（mp4 + cover）+ videos.video_file_url / cover_url
+5. status → video_processed
 
-降级方案（Apify 无下载链接时）：
-- 跳过 MP4,只下载封面图
-- video_file_url 留空,Gemini 调用时只用封面
-- status 仍走 video_processed
+降级方案（worker 超时 / 视频不存在）：
+- video_file_url 留空
+- Gemini 分析只用封面图 + 字幕（画面理解降级,文案分析仍可用）
+- status 仍走 video_processed（不阻塞流程）
 ```
 
 ### 7.4 ~~upload-to-r2~~ (v0.7 移除)
+
+**[REMOVED since v0.7]** 逻辑已合并。v0.8 进一步合并进 Railway Worker 调用。
 
 **[REMOVED since v0.7]** 逻辑已合并到 §7.3 `upload-video-to-r2`。原 Step 2(下载到 /tmp) + Step 3(上传 R2) 合并为一次 handler 调用,无 /tmp 中转。
 
@@ -1158,9 +1213,9 @@ tiktok/
 
 ## 11. 环境变量
 
-```bash
-# .env.local.example
+Vercel 端(`.env.local`):
 
+```bash
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
@@ -1174,19 +1229,41 @@ R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=tiktok-assets
-R2_PUBLIC_URL=                    # 自定义域名或 R2 默认域名(开发期用 .r2.dev,生产期改成不填/空字符串)
+R2_PUBLIC_URL=                    # .r2.dev 开发域名(不含 bucket 名)或自定义域名
 
-# Apify（TikTok 抓取）
+# Apify（TikTok 元数据抓取）
 APIFY_API_KEY=
-MOCK_APIFY=true                   # 不配 Key 时用 Mock
+MOCK_APIFY=false                  # true = 走 Mock 数据
+
+# Railway Worker（视频下载微服务,v0.8 新增）
+RAILWAY_WORKER_URL=               # 例 https://tiktok-worker.up.railway.app
+WORKER_SECRET=                    # 共享密钥,Vercel 和 Worker 两边配一样的
 
 # OpenRouter(统一 AI 网关,本期调 Gemini)
 OPENROUTER_API_KEY=
-GEMINI_MODEL=google/gemini-3.5-flash   # OpenRouter ID,不是 Google AI Studio ID
-MOCK_GEMINI=true                       # 不配 Key 时用 Mock
+GEMINI_MODEL=google/gemini-2.5-flash   # 支持 video_url 输入的模型
+MOCK_GEMINI=false                      # true = 走 Mock 数据
 
 # OpenAI Whisper(可选,ASR 降级;不配就走文本拼接)
 WHISPER_API_KEY=
+```
+
+Railway Worker 端(在 Railway Dashboard 配):
+
+```bash
+# R2 凭据(worker 直接传 R2,不经过 Vercel)
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=tiktok-assets
+R2_PUBLIC_URL=                    # 和 Vercel 端一致
+
+# 鉴权(Vercel 请求头带 X-Worker-Secret,值要一致)
+WORKER_SECRET=
+
+# 可选:超时控制
+MAX_VIDEO_SIZE_MB=50              # 超过的拒绝下载
+DOWNLOAD_TIMEOUT_SEC=60           # yt-dlp 单视频超时
 ```
 
 ---
@@ -1273,30 +1350,46 @@ curl http://localhost:3000/api/cron/process
 │                    │    ┌───────┘         │
 │                    │    │  HTTP 调用链     │
 │                    │    │  fetch(自己)     │
-│                    │    │  7 步接力       │
+│                    │    │  6 步接力       │
 │                    │    └───────┘         │
 └────────────────────┼─────────────────────┘
                      │
-         ┌───────────┼───────────┐
-         ▼           ▼           ▼
-    ┌────────┐ ┌────────┐ ┌────────────┐
-    │Supabase│ │  Apify │ │ OpenRouter │
-    │Postgres│ │ TikTok │ │ → Gemini   │
-    │ 500MB  │ │ Scraper│ │            │
-    │ 状态机 │ │        │ │            │
-    └────────┘ └────────┘ └────────────┘
-         
-    ┌──────────────┐
-    │ Cloudflare R2│
-    │   10GB 存储   │
-    │   免流量费    │
-    │ MP4/帧/封面   │
+         ┌───────────┼───────────┬──────────────┐
+         ▼           ▼           ▼              ▼
+    ┌────────┐ ┌────────┐ ┌────────────┐ ┌────────────┐
+    │Supabase│ │  Apify │ │ OpenRouter │ │  Railway   │
+    │Postgres│ │ 元数据 │ │ → Gemini   │ │  Worker    │
+    │ 状态机 │ │ 抓取   │ │ (base64视频)│ │ (yt-dlp下载)│
+    └────────┘ └────────┘ └────────────┘ └──────┬─────┘
+                                                │ 直接传
+    ┌──────────────┐                           │
+    │ Cloudflare R2│ ◄──────────────────────────┘
+    │ MP4 + 封面    │
     └──────────────┘
 ```
 
 ---
 
-## 16. 版本记录
+## 16. 已知 Stub / 技术债(Phase 5 收尾登记)
+
+以下是 Phase 1-5 完成后**已知未实现或简化处理**的部分,记录在此便于后续接手。
+
+| 模块 | 现状 | 影响 | 计划 |
+|------|------|------|------|
+| `app/api/cron/refresh-metrics/route.ts` | v0.8 已接真实 Apify(重抓 completed 视频互动数),单次限 5 条控成本 | 大量视频时需多次触发 | 可加 cron 定时跑 |
+| `app/api/cron/monitor-creators/route.ts` | v0.8 已接真实 Apify(`profiles` 抓取),按真实 `tiktok_video_id` 去重 | — | 已实现 |
+| `app/api/cron/search-keywords/route.ts` | v0.8 已接真实 Apify(`searchQueries` 抓取),去重 | — | 已实现 |
+| `lib/pipeline/extract-subtitle.ts` | v0.8 三级 fallback 已实现:Apify 字幕 → Whisper → 文本拼接 | TikTok 新版 `textExtra` 基本空,实际靠 Whisper/文本 | Whisper 受 10s 超时,大文件走降级 |
+| `lib/pipeline/upload-video-to-r2.ts` | v0.8 改为调 Railway Worker(yt-dlp) | worker 超时 → video_file_url 留空,降级到封面+字幕分析 | 已实现 |
+| Gemini 视频输入 | v0.8 用 base64 内联(OpenRouter 不支持任意 mp4 URL,只支持 YouTube+base64) | 大视频 base64 可能超 token 上限 | 短视频 OK,长视频可降级到封面 |
+| RLS | 第一版所有表匿名可访问,无用户系统 | 任何人可读写 | 后续加 Supabase Auth + RLS 策略 |
+| slideshow 视频 | TikTok `isSlideshow:true` 的视频是图片轮播,无 mp4 | worker 下不到文件,走封面降级 | TikTok 现状,无法绕过 |
+
+**真实模式链路(v0.8)**:提交 → Apify 元数据 → Railway Worker 下视频 → R2 → Whisper 字幕 → Gemini(base64 视频)→ 分析结果。slideshow 视频走封面降级。
+
+---
+
+## 17. 版本记录
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
@@ -1307,3 +1400,4 @@ curl http://localhost:3000/api/cron/process
 | v0.5 | 2026-07-03 | 确认方案 B:Vercel Hobby + Supabase + R2,存储从 Supabase Storage 迁移到 Cloudflare R2,移除 Pro 双模式冗余,聚焦 Hobby 7 步链路 |
 | v0.6 | 2026-07-03 | Gemini 选型从 Google AI Studio 改为 OpenRouter(用户决定);删 tech.md 14 阶段列表(以 task.md 为准);加 task.md 交叉引用;关键帧策略明确"先用封面"是 MVP 简化决策 |
 | v0.7 | 2026-07-03 | **关键变更:Gemini 视频输入改为传 R2 video URL**(完整视频理解,替代封面/MVP 简化);Pipeline 从 7 步合并为 6 步(下载+上传合一);删关键帧抽帧步骤;R2 bucket 强制 Public Access;extract-audio 改名为 extract-subtitle(明确 Apify 字幕优先 + ASR 降级);max_tokens 4096→8192(完整视频分析输出更长);**`video_downloaded` 状态标 [DEPRECATED]**,新流转直接跳过(metadata_fetched → video_processed),§7.3/§7.4 handler 合并为 `upload-video-to-r2` |
+| v0.8 | 2026-07-04 | **真实化改造**:① Apify 实测反爬升级后 `downloadUrl` 失效,改字段映射(postURLs/profiles/searchQueries,mediaUrls,createTimeISO);② 新增 **Railway Worker**(yt-dlp 下载视频 → 传 R2),§7.3 handler 改为调 worker;③ Gemini 视频输入从"R2 URL"改为 **base64 内联**(OpenRouter 只支持 YouTube 链接 + base64,加 `input_modalities:['video']`);④ Whisper 独立 `lib/whisper/client.ts`,三级 fallback(Apify 字幕→Whisper→文本);⑤ 3 个 cron 端点接真实 Apify + 按真实 tiktok_id 去重;⑥ R2 公开 URL 格式修正(.r2.dev 不含 bucket 名);⑦ extract-subtitle 三级 fallback 实现 |
