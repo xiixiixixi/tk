@@ -296,13 +296,27 @@ export async function updateTask(
 
 // ============================================================
 // Phase 2 调度器(get_next_pending_video RPC)
+// 用原始 fetch 调 PostgREST(绕过 Supabase JS client 的潜在配置问题)
 // ============================================================
 export async function getNextPendingVideo(): Promise<PipelineNextRow | null> {
-  const { data, error } = await getSupabaseAdmin()
-    .rpc("get_next_pending_video")
-    .single();
-  if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
-  return (data ?? null) as PipelineNextRow | null;
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_next_pending_video`;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Supabase URL 或 service_role key 缺失");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`getNextPendingVideo HTTP ${res.status}: ${await res.text()}`);
+  }
+  const rows = (await res.json()) as PipelineNextRow[];
+  return rows.length > 0 ? rows[0] : null;
 }
 
 // ============================================================
