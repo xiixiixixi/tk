@@ -3,6 +3,9 @@ import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 
+// 副作用导入:确保服务启动时调度器自动初始化(module 级 singleton guard)
+import "@/lib/scheduler";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
