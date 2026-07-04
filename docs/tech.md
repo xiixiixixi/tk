@@ -11,11 +11,10 @@
 ### 1.1 技术栈
 
 ```
-Vercel Hobby（网页 + API + HTTP 调用链）
-+ Supabase（Postgres 数据库 + 去重 + 状态机）
+Railway（web 主网站 + video-worker 视频下载,同一项目内网通信）
++ Supabase（Postgres 数据库 + 去重 + 状态机 + RLS 锁权限）
 + Cloudflare R2（视频文件 + 封面图,公开可读）
-+ Apify（TikTok 元数据抓取）
-+ Railway Worker（视频下载:yt-dlp 拉真实 MP4 → 传 R2）
++ Apify（TikTok 元数据 + ASR 字幕抓取）
 + OpenRouter（统一 AI 网关,调 gemini-3.5-flash,视频走 base64 内联,自带音频理解）
 ```
 
@@ -31,13 +30,11 @@ Vercel Hobby（网页 + API + HTTP 调用链）
 
 | 组件 | 免费额度 | 够用吗 |
 |------|---------|--------|
-| Vercel Hobby | 100GB 带宽、10 万次函数/月 | ✅ 够用，10 秒超时用 HTTP 调用链解决 |
+| Railway(web + worker) | $5 试用额度,之后 ~$5/月 | ✅ 两个服务共享额度,常驻小服务很便宜 |
 | Supabase | 500MB 数据库、5GB 带宽/月 | ✅ 只存结构化数据，绰绰有余 |
 | R2 | 10GB 存储、免流量费 | ✅ 存几百个 MP4 没问题，读文件不花钱 |
-| Railway Worker | $5 试用额度,之后按用量(~$5/月) | ✅ 跑 yt-dlp 下载视频,常驻小服务很便宜 |
 | Apify | 按 credit 计费 | ✅ 元数据抓取 ~$0.00025/次,很便宜 |
 | OpenRouter | 按 token 计费 | ✅ Gemini flash ~$0.001/次分析 |
-| OpenAI Whisper | 按分钟计费($0.006/分钟) | ✅ 短视频几分钱 |
 
 ### 1.3 不做的事
 
@@ -1288,13 +1285,25 @@ DOWNLOAD_TIMEOUT_SEC=60           # yt-dlp 单视频超时
 5. 获取 `Access Key ID` + `Secret Access Key` + `Account ID`
 6. 填入环境变量
 
-### 12.3 Vercel
+### 12.3 Railway(主网站 web + 视频 worker)
 
-1. 推送代码到 GitHub
-2. [vercel.com](https://vercel.com) → Import 仓库
-3. 配置环境变量（以上全部）
-4. Deploy
-5. Hobby 版不需要配置 Cron（vercel.json 中的 cron 配置被忽略也无妨）
+> v0.9:主网站从 Vercel 迁到 Railway,和 worker 放同一个项目(内网通信 + 统一管理)。
+> 完整部署步骤见 [`docs/deployment.md`](./deployment.md)。
+
+**两个服务**(同一个 Railway 项目 `victorious-healing`):
+- `web`(主网站 Next.js):6 页面 + 13 API + 4 cron,源码在仓库根目录
+- `video-worker`(yt-dlp 下载):源码在 `worker/`
+
+**部署关键点**:
+1. web 用 Nixpacks 自动构建(根目录 package.json = Next.js)
+2. worker 必须加 `RAILWAY_DOCKERFILE_FORCE=1` 强制用 Dockerfile(否则 Nixpacks 接管)
+3. `NEXT_PUBLIC_APP_URL` 是构建时变量,域名生成后必须回填 + rebuild
+4. 两个服务的 `WORKER_SECRET` 要一致(web 调 worker 时带)
+5. web 的 `NODE_ENV=production` 让 cron 鉴权生效
+
+**为什么不用 Vercel**:Vercel Hobby 10s 超时 + 无持久 FS,跑不了 yt-dlp。
+全堆 Railway 后,worker 和 web 内网通信更快,一个平台管所有东西。
+vercel.json 保留(备用,若以后回 Vercel 部署前端)。
 
 ### 12.4 本地开发
 
@@ -1402,3 +1411,7 @@ curl http://localhost:3000/api/cron/process
 | v0.6 | 2026-07-03 | Gemini 选型从 Google AI Studio 改为 OpenRouter(用户决定);删 tech.md 14 阶段列表(以 task.md 为准);加 task.md 交叉引用;关键帧策略明确"先用封面"是 MVP 简化决策 |
 | v0.7 | 2026-07-03 | **关键变更:Gemini 视频输入改为传 R2 video URL**(完整视频理解,替代封面/MVP 简化);Pipeline 从 7 步合并为 6 步(下载+上传合一);删关键帧抽帧步骤;R2 bucket 强制 Public Access;extract-audio 改名为 extract-subtitle(明确 Apify 字幕优先 + ASR 降级);max_tokens 4096→8192(完整视频分析输出更长);**`video_downloaded` 状态标 [DEPRECATED]**,新流转直接跳过(metadata_fetched → video_processed),§7.3/§7.4 handler 合并为 `upload-video-to-r2` |
 | v0.8 | 2026-07-04 | **真实化改造**:① Apify 实测反爬升级后 `downloadUrl` 失效,改字段映射(postURLs/profiles/searchQueries,mediaUrls,createTimeISO);② 新增 **Railway Worker**(yt-dlp 下载视频 → 传 R2),§7.3 handler 改为调 worker;③ Gemini 视频输入从"R2 URL"改为 **base64 内联**(OpenRouter 只支持 YouTube 链接 + base64,加 `input_modalities:['video']`);④ Whisper 独立 `lib/whisper/client.ts`,三级 fallback(Apify 字幕→Whisper→文本);⑤ 3 个 cron 端点接真实 Apify + 按真实 tiktok_id 去重;⑥ R2 公开 URL 格式修正(.r2.dev 不含 bucket 名);⑦ extract-subtitle 三级 fallback 实现 |
+| v0.8.1 | 2026-07-04 | 模型统一回 `gemini-3.5-flash`(之前误改 2.5-flash);实测 3.5-flash 通过 video_url+base64 完美支持视频画面+音频理解;移除 `input_modalities`(加了反而偶尔 400) |
+| v0.8.2 | 2026-07-04 | **移除 Whisper**:实测 Gemini 自身能逐字转录视频口播 + 识别音乐,Whisper 多余;extract-subtitle 改为 Apify 字幕(WEBVTT 解析)→ 文本降级;删 `lib/whisper/` + WHISPER_API_KEY |
+| v0.8.3 | 2026-07-04 | **Apify 字幕下载**:实测发现 `videoMeta.subtitleLinks`(WEBVTT 格式 ASR 字幕,8 个视频 6 个有);extract-subtitle 加 `parseWebVtt` 解析,口播原文正确入库 |
+| v0.9 | 2026-07-04 | **主网站部署到 Railway**(从 Vercel 迁移):web 服务(Next.js)+ video-worker 同一个项目内网通信;§12.3 重写;**安全加固**:cron 鉴权(`requireCronAuth`)+ Supabase RLS(6 表 anon 只读/禁写)+ 前端 task-list 改走 API(不裸查 DB);`docs/deployment.md` 全服务部署文档(含迁移 checklist) |

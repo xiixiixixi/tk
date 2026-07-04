@@ -2,7 +2,7 @@
 
 > **本文档是执行计划**(Phase 1–6,每项含文件路径 + 验证标准)。
 > **技术事实(选型理由 / 状态机 / API 规格 / Prompt 模板)见 [`docs/tech.md`](./tech.md)**。
-> **Railway Worker 部署见 [`docs/railway-worker.md`](./railway-worker.md)**。
+> **全服务部署指南见 [`docs/deployment.md`](./deployment.md)**。
 > 开发中两文档冲突时,**以本文档为准**(本文档更新频次更高)。
 >
 > 依赖关系:Phase 1 → Phase 2 → Phase 3 + Phase 4 → Phase 5 → Phase 6(生产化)
@@ -134,7 +134,7 @@
 - [x] `.env.local.example` — 全字段(Supabase/Apify/R2/OpenRouter/Railway Worker,已移除 Whisper)
 - [x] `README.md` — 重写(完成度表 + 本地开发 + 部署 + 已知限制)
 - [x] `docs/tech.md` §16 已知 stub 表 + §17 v0.8 版本记录
-- [x] `docs/railway-worker.md` — Railway Worker 完整部署文档
+- [x] `docs/deployment.md` — 全服务部署文档(web + worker + Supabase + R2 + 迁移 checklist)
 
 ### 5.3 代码清理
 - [x] 删重复 migration(`00002_scheduler_rpc.sql`)
