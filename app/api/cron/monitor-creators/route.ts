@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getSupabaseAdmin as getSupabaseAdminDirect } from "@/lib/supabase/client";
 import { requireCronAuth } from "@/lib/auth/cron";
 import { getCrawlConfig, passesCrawlFilter } from "@/lib/crawl-config";
 import {
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
 
   let created = 0;
   let refreshed = 0;
+  let restored = 0;
   const errors: string[] = [];
 
   // 读取全局采集配置(过滤条件)
@@ -122,6 +124,28 @@ export async function GET(req: Request) {
           continue;
         }
 
+        // 查包含软删除行的记录(UNIQUE INDEX 不区分 deleted_at)
+        const { data: deletedRow } = await getSupabaseAdminDirect()
+          .from("videos")
+          .select("id, analysis_status")
+          .eq("tiktok_video_id", data.id)
+          .not("deleted_at", "is", null)
+          .maybeSingle();
+        if (deletedRow) {
+          // 恢复软删除行:清除 deleted_at,重置为 new 重新走 pipeline
+          await getSupabaseAdminDirect()
+            .from("videos")
+            .update({
+              deleted_at: null,
+              analysis_status: "new",
+              error_message: null,
+              ...apifyResultToVideoUpdate(data),
+            })
+            .eq("id", deletedRow.id);
+          restored++;
+          continue;
+        }
+
         await insertVideo({
           source_type: "creator_monitor",
           source_value: creator.creator_url,
@@ -163,6 +187,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     processed: created,
     refreshed,
+    restored,
     active_creators: activeCreators.length,
     mode: isMock ? "mock" : "real",
     errors: errors.length > 0 ? errors : undefined,
