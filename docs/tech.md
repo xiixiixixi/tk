@@ -2,7 +2,7 @@
 
 > 本文档是技术事实来源（选型理由、状态机、API 规格、Prompt 模板）。
 > 执行计划见 [`docs/task.md`](./task.md)（Phase 1–5 任务清单 + 验证标准）。
-> **选型确认：Vercel Hobby（免费）+ Supabase（免费数据库）+ Cloudflare R2（公开可读,免费存储）+ OpenRouter（统一 AI 网关）**
+> **选型确认：Railway（web + worker）+ Supabase（免费数据库）+ Cloudflare R2（公开可读,免费存储）+ OpenRouter（统一 AI 网关）**
 
 ---
 
@@ -22,9 +22,9 @@ Railway（web 主网站 + video-worker 视频下载,同一项目内网通信）
 > Apify `clockworks/tiktok-scraper` 实测(2026-07)在反爬升级后**不返回视频 mp4 直链**
 > (`downloadUrl`/`mediaUrls` 均空,`downloadVideos:true` 把文件存内部 storage 取不到)。
 > TikTok 视频文件需要 `yt-dlp` 实时解析下载,而 yt-dlp 是二进制工具 + 频繁更新反反爬,
-> Vercel Hobby serverless(10s 超时、无持久 FS)跑不了。
-> 解决:在 Railway 上跑一个常驻 Node + yt-dlp 微服务,Vercel 通过 HTTP 调用它(像调 Apify 一样)。
-> 这样既保留 Vercel 免费档,又拿到真实视频文件。
+> Vercel/Railway serverless 跑不了。
+> 解决:在 Railway 上跑一个常驻 Node + yt-dlp 微服务,web 服务通过 HTTP 调用它(像调 Apify 一样)。
+> 这样 web 服务和 worker 都在 Railway,统一管理。
 
 ### 1.2 为什么这个组合
 
@@ -44,9 +44,9 @@ Railway（web 主网站 + video-worker 视频下载,同一项目内网通信）
 ❌ 完整 SaaS 权限系统
 ❌ 复杂任务队列（Inngest / QStash）— Railway worker 用同步 HTTP 即可
 ❌ 评论深度分析
-❌ Vercel Pro/Enterprise（10s 超时已用 HTTP 调用链解决,无付费需要）
+❌ Vercel(已迁移到 Railway,统一管理)
 ❌ Google AI Studio 直接调 Gemini(走 OpenRouter 统一网关,便于切换模型)
-❌ 在 Vercel serverless 里跑 yt-dlp（无持久 FS + 10s 超时 + 反爬更新频繁,放 Railway worker）
+❌ 在 web 服务里跑 yt-dlp(放 Railway worker)
 ```
 
 ### 1.4 MVP 成功定义
@@ -55,7 +55,7 @@ Railway（web 主网站 + video-worker 视频下载,同一项目内网通信）
 
 ---
 
-## 2. 核心约束：Vercel Hobby 的限制与对策
+## 2. 核心约束：视频处理管线设计
 
 ### 2.1 两个硬限制
 
@@ -95,7 +95,7 @@ Step 5:  保存结果到 Supabase           耗时 ~1s   状态 → completed
 
 ### 2.4 HTTP 调用链：解决 Cron 缺失
 
-Vercel Hobby 不支持 Cron Jobs。**步骤之间用 HTTP 调用链串联：每一步成功后，用 `fetch()` 触发下一步。**
+Railway 无内置 Cron 触发器。**步骤之间用 HTTP 调用链串联：每一步成功后，用 `fetch()` 触发下一步。**
 
 ```
 用户提交任务
@@ -191,11 +191,11 @@ completed              — 分析完成（终态）
 
 ### 2.8 Railway Worker —— 视频下载微服务
 
-**为什么独立服务**:yt-dlp 是二进制 + 频繁更新反反爬,Vercel serverless(无持久 FS、10s 超时)跑不了。放 Railway 常驻 Node 进程,Vercel 通过 HTTP 调用(和调 Apify 一样的模式)。
+**为什么独立服务**:yt-dlp 是二进制 + 频繁更新反反爬,web 服务(无持久 FS)跑不了。放 Railway 常驻 Node 进程,web 服务通过 HTTP 调用(和调 Apify 一样的模式)。
 
 **架构**:
 ```
-Vercel (Step 2 handler)
+web 服务 (Step 2 handler)
   │  POST { url, r2Key } https://<worker>.up.railway.app/download
   ▼
 Railway Worker (Node + yt-dlp)
@@ -203,7 +203,7 @@ Railway Worker (Node + yt-dlp)
   │  2. 下载 mp4 到内存
   │  3. 用 R2 凭据上传到 {r2Key}
   ▼
-返回 { r2Url, size, duration } 给 Vercel
+返回 { r2Url, size, duration } 给 web 服务
 ```
 
 **Worker 职责(单一)**:
@@ -211,13 +211,13 @@ Railway Worker (Node + yt-dlp)
 - 输出:`{ r2Url: R2 公开 URL, size: 字节数, duration: 秒 }`
 - 错误:`{ error: "...", errorCode: "DOWNLOAD_FAILED" | "VIDEO_NOT_FOUND" }`
 
-**为什么 worker 自己传 R2(而不是返回 mp4 给 Vercel)**:
-- 视频 5-30MB,走 Vercel 中转会撞 10s 超时 + 浪费带宽
-- worker 直接用 R2 凭据上传,Vercel 只收一个 URL 字符串
+**为什么 worker 自己传 R2(而不是返回 mp4 给 web 服务)**:
+- 视频 5-30MB,走 web 服务中转会浪费带宽
+- worker 直接用 R2 凭据上传,web 服务只收一个 URL 字符串
 
-**Vercel 侧的超时对策**:
+**web 侧的超时对策**:
 - Step 2 handler 调 worker 用 `AbortController` 设 50s 超时
-- ⚠️ 这会超过 Vercel Hobby 10s 限制 → Step 2 需要拆成两步:
+- ⚠️ 这会超过单步处理时间 → Step 2 需要拆成两步:
   - `Step 2a`:POST 触发 worker,拿到 `jobId` 立即返回(状态 → `downloading`)
   - `Step 2b`:轮询 `GET /status/{jobId}`,完成才推进(状态 → `video_processed`)
 - 或简化方案:worker 同步等待(短视频 <8s 能跑完),长视频超时标 failed 后续重试
@@ -229,8 +229,8 @@ Railway Worker (Node + yt-dlp)
 - 无状态、可水平扩展(每个请求独立)
 
 **安全**:
-- Worker 暴露在公网,用 `WORKER_SECRET` 共享密钥鉴权(Vercel 请求头带 `X-Worker-Secret`)
-- R2 凭据只配在 worker 端,Vercel 不直接传文件
+- Worker 暴露在公网,用 `WORKER_SECRET` 共享密钥鉴权(web 服务请求头带 `X-Worker-Secret`)
+- R2 凭据只配在 worker 端,web 服务不直接传文件
 
 ---
 
@@ -248,7 +248,7 @@ shadcn/ui
 为什么 Next.js：
 - 页面和 API 在同一项目，不需单独起后端
 - App Router 的 Server Components 减少客户端 JS
-- Vercel 原生部署，零配置
+- Railway 原生部署,零配置
 
 为什么 shadcn/ui：
 - 代码直接复制进项目，不增加 npm 依赖
@@ -815,7 +815,7 @@ POST   /api/settings      — 保存设置
 1. POST { url: video.webVideoUrl, r2Key: "{video_id}/video.mp4" } 到 Railway Worker
    （请求头带 X-Worker-Secret 鉴权）
 2. Worker 用 yt-dlp 解析真实 mp4 → 下载 → 直接传 R2 → 返回 { r2Url, size }
-3. 封面图：从 video.cover_url（Apify 已拿到）直接下载传 R2（小文件,Vercel 自己做）
+3. 封面图：从 video.cover_url（Apify 已拿到）直接下载传 R2（小文件,web 服务自己做）
 4. 更新 video_assets（mp4 + cover）+ videos.video_file_url / cover_url
 5. status → video_processed
 
@@ -1205,14 +1205,13 @@ tiktok/
 ├── tsconfig.json
 ├── tailwind.config.ts
 ├── next.config.js
-└── vercel.json
 ```
 
 ---
 
 ## 11. 环境变量
 
-Vercel 端(`.env.local`):
+web 服务端(`.env.local`):
 
 ```bash
 # App
@@ -1236,7 +1235,7 @@ MOCK_APIFY=false                  # true = 走 Mock 数据
 
 # Railway Worker（视频下载微服务,v0.8 新增）
 RAILWAY_WORKER_URL=               # 例 https://tiktok-worker.up.railway.app
-WORKER_SECRET=                    # 共享密钥,Vercel 和 Worker 两边配一样的
+WORKER_SECRET=                    # 共享密钥,web 服务和 Worker 两边配一样的
 
 # OpenRouter(统一 AI 网关,本期调 Gemini)
 OPENROUTER_API_KEY=
@@ -1249,14 +1248,14 @@ MOCK_GEMINI=false                      # true = 走 Mock 数据
 Railway Worker 端(在 Railway Dashboard 配):
 
 ```bash
-# R2 凭据(worker 直接传 R2,不经过 Vercel)
+# R2 凭据(worker 直接传 R2,不经过 web 服务)
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=tiktok-assets
-R2_PUBLIC_URL=                    # 和 Vercel 端一致
+R2_PUBLIC_URL=                    # 和 web 服务端一致
 
-# 鉴权(Vercel 请求头带 X-Worker-Secret,值要一致)
+# 鉴权(web 服务请求头带 X-Worker-Secret,值要一致)
 WORKER_SECRET=
 
 # 可选:超时控制
@@ -1303,7 +1302,6 @@ DOWNLOAD_TIMEOUT_SEC=60           # yt-dlp 单视频超时
 
 **为什么不用 Vercel**:Vercel Hobby 10s 超时 + 无持久 FS,跑不了 yt-dlp。
 全堆 Railway 后,worker 和 web 内网通信更快,一个平台管所有东西。
-vercel.json 保留(备用,若以后回 Vercel 部署前端)。
 
 ### 12.4 本地开发
 
@@ -1349,7 +1347,7 @@ curl http://localhost:3000/api/cron/process
   │  轮询每 3 秒 + 卡住时兜底触发
   ▼
 ┌──────────────────────────────────────────┐
-│              Vercel Hobby（免费）          │
+│              Railway（web + worker）       │
 │                                           │
 │  Next.js App Router                       │
 │  ┌─────────┐  ┌─────────┐  ┌──────────┐  │

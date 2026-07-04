@@ -12,13 +12,13 @@
 
 | 层 | 选型 | 理由 |
 |----|------|------|
-| 网页 + API | Next.js 16 (App Router) + Vercel Hobby | 页面和 API 同项目,零配置部署 |
+| 网页 + API | Next.js 16 (App Router) + Railway | 页面和 API 同项目,零配置部署 |
 | 数据库 | Supabase Postgres | 标准 Postgres,自带 Dashboard + REST |
 | 文件存储 | Cloudflare R2 (S3 兼容) | 10GB 免费 + 零流量费,存 MP4 / 封面 |
 | TikTok 抓取 | Apify `clockworks/tiktok-scraper` | 不自研爬虫 |
 | AI 网关 | OpenRouter(本期调 Gemini) | 统一网关,可一键切模型 |
 
-**核心约束:Vercel Hobby 函数 10s 超时 + 不支持 Cron。** 对策:把一条视频的处理切成 6 步,每步一次函数调用,步骤之间用 HTTP 调用链(`fetch` 自己)接力;前端每 3 秒轮询,卡住 60 秒时主动踹一脚 `/api/cron/process` 兜底。
+**核心约束:Railway 长驻进程无超时限制。一条视频处理切成 6 步,步骤间用 HTTP 调用链接力;前端每 3 秒轮询,卡住 60 秒时主动踹一脚 /api/cron/process 兜底。**
 
 ---
 
@@ -30,7 +30,7 @@
 | 2 | 异步管线:7 个 API 端点 + 核心调度器 + 6 个 Handler | ✅ |
 | 3 | 前端三页:首页(三 Tab 提交 + 任务列表)/ 视频库(表格 + 筛选)/ 详情页(8 区块) | ✅ |
 | 4 | 博主监控 + 关键词搜索 + 设置页 + 辅助 Cron | ✅(Mock 模式完整;真实 Apify 批量抓取见下方 stub 表) |
-| 5 | 收尾:vercel.json / README / migration 一致性 / 技术债清理 | ✅ |
+| 5 | 收尾:deployment.md / README / migration 一致性 / 技术债清理 | ✅ |
 
 ---
 
@@ -73,7 +73,7 @@ npm run dev
 
 ### 手动触发管线
 
-Hobby 无 Cron,提交任务后如果链断了,手动踹一脚:
+无定时 Cron,提交任务后如果链断了,手动踹一脚:
 
 ```bash
 curl http://localhost:3000/api/cron/process
@@ -83,17 +83,15 @@ curl http://localhost:3000/api/cron/process
 
 ---
 
-## 部署到 Vercel
+## 部署到 Railway
 
-1. 推代码到 GitHub
-2. [vercel.com](https://vercel.com) → Import 仓库
-3. 配置环境变量(参考 `.env.local.example`,生产期建议关掉 Mock)
-4. Deploy
+完整部署步骤见 [`docs/deployment.md`](./docs/deployment.md)(含 web + worker + Supabase + R2 全服务)。
 
-**注意:**
-- Hobby 档 `vercel.json` 里的 cron 配置会被忽略,靠设置页手动触发 + HTTP 调用链
-- 真实长视频(15-30MB MP4)下载+上传 R2 可能撞 10s 超时,生产期需要切片或 HLS(见已知限制)
+要点:
+- 代码推到 GitHub 后,Railway 自动部署(web 服务读根目录,worker 服务读 worker/)
+- 生产期关掉 Mock(MOCK_APIFY=false, MOCK_GEMINI=false)
 - R2 bucket 必须开 Public Access,否则 Gemini fetch 不到视频
+- worker 需要 RAILWAY_DOCKERFILE_FORCE=1 强制用 Dockerfile
 
 ---
 
@@ -124,7 +122,7 @@ supabase/migrations/                # 3 个 SQL
 | `refresh-metrics` cron | stub,返回计数不刷新 | Phase 6+:接 Apify 增量 metrics API |
 | `monitor-creators` / `search-keywords` cron | Mock 模式入库假视频;真实模式未接 Apify 批量 | Phase 6+:接真实 Apify |
 | `extract-subtitle.ts` | Apify 字幕优先,无则文本降级(title+description+hashtags) | 口播转录靠 Gemini 自身音频理解(实测能逐字转录),不需要 Whisper |
-| 长视频上传 R2 | 真实 15-30MB MP4 撞 Vercel 10s 超时风险 | 生产期切片或 HLS |
+| 长视频上传 R2 | 真实 15-30MB MP4 撞 Gemini base64 token 上限 | 走封面降级 |
 | RLS | 第一版匿名可访问,无用户系统 | 后续加 Supabase Auth + RLS |
 
 详见 [`docs/tech.md`](./docs/tech.md) 「已知 Stub」段。

@@ -130,7 +130,7 @@
 - [x] 边界测试 8 场景:非法 task_type / 不存在 ID / 非法 status / URL / fetch_limit 越界 等全对
 
 ### 5.2 部署配置
-- [x] `vercel.json` — framework/buildCommand/regions + cron(Hobby 忽略)
+- [x] `docs/deployment.md` — Railway 全服务部署文档(web + worker + Supabase + R2 + 迁移 checklist)
 - [x] `.env.local.example` — 全字段(Supabase/Apify/R2/OpenRouter/Railway Worker,已移除 Whisper)
 - [x] `README.md` — 重写(完成度表 + 本地开发 + 部署 + 已知限制)
 - [x] `docs/tech.md` §16 已知 stub 表 + §17 v0.8 版本记录
@@ -176,7 +176,7 @@
 ### 6.5 已知限制(不阻塞,登记在案)
 - [ ] slideshow 视频(`isSlideshow:true`)无 mp4,worker 下不到 → 走封面+字幕降级
 - [ ] 长视频(>25MB)base64 超 Gemini token 上限 → 跳过视频走封面降级
-- [ ] Railway Worker 同步等待,长视频可能撞 Vercel 10s → 已有降级,但理想方案是改异步(jobId 轮询)
+- [ ] Railway Worker 同步等待,长视频可能撞 Gemini base64 token 上限 → 已有降级,但理想方案是改异步(jobId 轮询)
 
 ---
 
@@ -210,6 +210,6 @@ Phase 3  Phase 4 │  ✅    ✅
 | 2 | 7 API + 调度器 + 6 Handler + worker client | ✅ |
 | 3 | 3 页面 + 8 组件 + 轮询 | ✅ |
 | 4 | 6 API + 3 页面 + monitor 共享组件 | ✅ |
-| 5 | vercel.json + README + 3 migration + 文档 + 清理 | ✅ |
+| 5 | deployment.md + README + 4 migration + 文档 + 清理 | ✅ |
 | Railway | worker/(server.js + Dockerfile + package.json) | ✅ 已部署 |
 | **合计** | ~55 文件 | Phase 1-5 完成 |
