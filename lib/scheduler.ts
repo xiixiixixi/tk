@@ -217,15 +217,3 @@ export function stopScheduler(): void {
   console.log("[scheduler] stopped");
 }
 
-// ============================================================
-// 自动初始化:模块首次被 import 时启动(单例安全)
-// Next.js server 侧首次请求会触发此模块加载。
-// ============================================================
-if (typeof setInterval !== "undefined" && typeof globalThis !== "undefined") {
-  // 用 globalThis 打标记防止 HMR / 重复加载时重复启动
-  const KEY = "__tiktok_scheduler_started__";
-  if (!(globalThis as Record<string, unknown>)[KEY]) {
-    (globalThis as Record<string, unknown>)[KEY] = true;
-    startScheduler();
-  }
-}

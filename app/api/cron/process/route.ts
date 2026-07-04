@@ -147,10 +147,15 @@ export async function GET(req: Request) {
   }
 
   // ---- 批量取待处理视频(FOR UPDATE SKIP LOCKED 保证不重复) ----
+  // 注意:各次 RPC 调用是独立事务,锁在调用结束后释放。并发 grab 可能拿到同一条。
+  // 用 seenIds 做本请求内去重,避免重复处理。
   const videos: VideoRow[] = [];
+  const seenIds = new Set<string>();
   for (let i = 0; i < batchSize; i++) {
     const next = await getNextPendingVideo();
     if (!next) break;
+    if (seenIds.has(next.id)) continue;
+    seenIds.add(next.id);
     const video = await getVideoById(next.id);
     if (video) videos.push(video);
   }
