@@ -122,7 +122,7 @@ export function PendingAnalysisPanel({
         </P>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button asChild variant="default">
-            <Link href="/">重新提交</Link>
+            <Link href="/videos">重新提交</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/videos">返回视频库</Link>

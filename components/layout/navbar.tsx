@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
  * rust 橙 logo 块 + 衬线品牌名 + 当前页橙色高亮
  */
 const NAV_ITEMS = [
-  { href: "/", label: "首页" },
+  { href: "/videos", label: "首页" },
   { href: "/videos", label: "视频库" },
   { href: "/creators", label: "博主" },
   { href: "/keywords", label: "关键词" },
@@ -22,7 +22,7 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-[#FAF8F5]/85 backdrop-blur-md dark:border-zinc-800/70 dark:bg-[#1A1715]/85">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         {/* Logo + 品牌 */}
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/videos" className="flex items-center gap-2.5">
           <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#C04A1A] font-serif text-sm font-bold text-white">
             T
           </span>
@@ -34,7 +34,7 @@ export function Navbar() {
         {/* 导航 */}
         <nav className="flex items-center gap-1">
           {NAV_ITEMS.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = item.href === "/videos" ? pathname === "/videos" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}

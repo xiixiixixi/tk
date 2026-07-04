@@ -444,37 +444,3 @@ export async function deleteKeyword(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// ============================================================
-// 首页汇总仪表盘统计
-// ============================================================
-
-export interface DashboardStats {
-  creator_count: number;
-  keyword_count: number;
-  video_total: number;
-  new_today: number; // 24h 内入库
-  pending_analysis: number; // 非终态(处理中)
-}
-
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const admin = getSupabaseAdmin();
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const terminal = ["completed", "failed", "duplicate"];
-  const [creators, keywords, videoTotal, newToday, pending] = await Promise.all([
-    admin.from("creators").select("id", { count: "exact", head: true }),
-    admin.from("keywords").select("id", { count: "exact", head: true }),
-    admin.from("videos").select("id", { count: "exact", head: true }),
-    admin.from("videos").select("id", { count: "exact", head: true }).gte("created_at", since),
-    admin
-      .from("videos")
-      .select("id", { count: "exact", head: true })
-      .not("analysis_status", "in", `(${terminal.join(",")})`),
-  ]);
-  return {
-    creator_count: creators.count ?? 0,
-    keyword_count: keywords.count ?? 0,
-    video_total: videoTotal.count ?? 0,
-    new_today: newToday.count ?? 0,
-    pending_analysis: pending.count ?? 0,
-  };
-}
