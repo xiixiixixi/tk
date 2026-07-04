@@ -94,8 +94,9 @@ async function executeJob(jobId: string): Promise<void> {
   }
 
   state.running = true;
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const url = `${base}${state.def.path}`;
+  // 用 localhost 而非公网 URL: Railway 容器无法通过公网域名访问自己(NAT 回路)
+  const port = process.env.PORT || "3000";
+  const url = `http://localhost:${port}${state.def.path}`;
 
   try {
     const res = await fetch(url, {
