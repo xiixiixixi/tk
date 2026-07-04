@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { Divider, H1, Muted } from "@/components/ui/typography";
 import { AnalysisView } from "@/components/videos/analysis-view";
+import { ExportMarkdown } from "@/components/videos/export-markdown";
 import { PendingAnalysisPanel } from "@/components/videos/pending-analysis-panel";
 import { VideoMediaPanel } from "@/components/videos/video-media-panel";
 import { getVideoById, getLatestAnalysis } from "@/lib/supabase/queries";
@@ -51,13 +52,16 @@ export default async function VideoDetailPage({ params }: PageProps) {
     <div className="min-h-full">
       {/* 顶部 Header(始终展示) */}
       <header className="mx-auto max-w-6xl px-6 pt-12 md:pt-16">
-        <Link
-          href="/videos"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          返回视频库
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/videos"
+            className="inline-flex items-center gap-1.5 text-sm text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            返回视频库
+          </Link>
+          <ExportMarkdown video={video} analysis={analysis} />
+        </div>
 
         <div className="mt-8 space-y-4">
           <Muted className="font-mono uppercase tracking-[0.18em]">

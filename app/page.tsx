@@ -1,5 +1,5 @@
 import { DashboardSummary } from "@/components/dashboard/summary";
-import { SubmitForm } from "@/components/tasks/submit-form";
+import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 import {
   getDashboardStats,
   listVideos,
@@ -8,15 +8,12 @@ import {
 import type { VideoListItem } from "@/lib/pipeline/types";
 
 /**
- * 首页 — 暖橙 Editor / 工作台风格。
+ * 首页 — 工作台仪表盘
  *
- * 结构(从上到下):
- *   1. Hero 标题区(衬线大字 + rust 橙强调)
- *   2. 工作台汇总(5 个统计卡 + 最近采集 8 条)
- *   3. 快速解析单条视频入口(降为次要 — 复用 SubmitForm)
+ * 移除了 SubmitForm(三 Tab 提交)——单条解析移到视频库顶部,
+ * 首页聚焦"汇总 + 最近活动"。
  *
- * 服务端渲染:首页要反映最新数据,关掉所有缓存。
- * 数据库异常降级为空对象,保证首页始终可访问。
+ * DashboardSummary 客户端组件自带 30s 自动刷新轮询,每次采集后数据自动更新。
  */
 export const dynamic = "force-dynamic";
 
@@ -29,7 +26,6 @@ const EMPTY_STATS: DashboardStats = {
 };
 
 export default async function Home() {
-  // 服务端并行拉取统计 + 最近 8 条视频,失败降级为空,不让首页炸掉
   const [statsResult, recentResult] = await Promise.allSettled([
     getDashboardStats(),
     listVideos({ page: 1, pageSize: 8 }),
@@ -57,16 +53,11 @@ export default async function Home() {
         </p>
       </header>
 
-      {/* 汇总工作台 */}
+      {/* 汇总工作台(30s 自动刷新,每次采集后数据自动更新) */}
       <section className="mt-16">
-        <DashboardSummary stats={stats} recentVideos={recentVideos} />
-      </section>
-
-      <div className="my-16 h-px bg-zinc-200 dark:bg-zinc-800" />
-
-      {/* 快速解析 — 单条视频链接的次要入口 */}
-      <section aria-label="快速解析单条视频">
-        <SubmitForm />
+        <AutoRefresh intervalMs={30000}>
+          <DashboardSummary stats={stats} recentVideos={recentVideos} />
+        </AutoRefresh>
       </section>
     </div>
   );

@@ -1,4 +1,5 @@
 import { H1, Lead, Muted } from "@/components/ui/typography";
+import { QuickParse } from "@/components/videos/quick-parse";
 import { VideoTable } from "@/components/videos/video-table";
 import { listVideos } from "@/lib/supabase/queries";
 
@@ -35,7 +36,10 @@ export default async function VideosPage() {
         </Lead>
       </header>
 
-      <section className="mt-12 md:mt-16">
+      {/* 单条解析:粘贴 TikTok URL 立即提交一个 analyze_video 任务 */}
+      <QuickParse className="mt-10 md:mt-12" />
+
+      <section className="mt-8 md:mt-10">
         <VideoTable
           initialVideos={videos}
           initialTotal={total}

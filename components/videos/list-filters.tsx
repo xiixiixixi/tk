@@ -4,7 +4,7 @@ import * as React from "react";
 import { Search as SearchIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { StatusFilter, type StatusFilterValue } from "./status-filter";
+import type { StatusFilterValue } from "./status-filter";
 
 /**
  * 通用视频列表筛选栏(视频库 / 博主详情 / 关键词详情 三处共用)
@@ -59,8 +59,6 @@ interface ListFiltersProps {
   value: VideoFilters;
   onChange: (next: VideoFilters) => void;
   disabled?: boolean;
-  /** 隐藏状态筛选(某些页面不需要) */
-  hideStatus?: boolean;
   className?: string;
 }
 
@@ -76,7 +74,6 @@ export function ListFilters({
   value,
   onChange,
   disabled = false,
-  hideStatus = false,
   className,
 }: ListFiltersProps) {
   const set = <K extends keyof VideoFilters>(key: K, v: VideoFilters[K]) =>
@@ -92,19 +89,11 @@ export function ListFilters({
           value={value.search}
           onChange={(e) => set("search", e.target.value)}
           disabled={disabled}
-          placeholder="搜索标题 / 作者"
+          placeholder="搜索标题或作者"
           aria-label="搜索标题或作者"
-          className={cn(inputCls, "w-[180px] pl-8")}
+          className={cn(inputCls, "w-[220px] pl-8")}
         />
       </div>
-
-      {!hideStatus && (
-        <StatusFilter
-          value={value.status}
-          onChange={(v) => set("status", v)}
-          disabled={disabled}
-        />
-      )}
 
       {/* 最低播放 */}
       <input

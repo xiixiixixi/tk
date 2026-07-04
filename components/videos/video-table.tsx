@@ -106,6 +106,10 @@ export function VideoTable({
   const urlPage = Math.max(1, Number(searchParams.get("page")) || 1);
   const urlStatus = (searchParams.get("status") as AnalysisStatus | null) ?? null;
   const urlSourceType = (searchParams.get("sourceType") as SourceType | null) ?? "";
+  // 博主跳转:?author=用户名 → 填入搜索框(模糊匹配标题+作者)
+  const urlAuthor = searchParams.get("author") ?? "";
+  // 关键词跳转:?sourceValue=关键词 → 精确匹配 source_value
+  const urlSourceValue = searchParams.get("sourceValue") ?? "";
 
   const [videos, setVideos] = React.useState<VideoListItem[]>(initialVideos);
   const [total, setTotal] = React.useState<number>(initialTotal);
@@ -113,6 +117,7 @@ export function VideoTable({
   const [filters, setFilters] = React.useState<VideoFilters>({
     ...DEFAULT_VIDEO_FILTERS,
     status: urlStatus ?? DEFAULT_VIDEO_FILTERS.status,
+    search: urlAuthor, // author 跳转 → 复用 search(模糊匹配)
   });
   const [sourceType, setSourceType] = React.useState<SourceType | "">(urlSourceType);
   const [loading, setLoading] = React.useState(false);
@@ -142,6 +147,7 @@ export function VideoTable({
         params.set("page", String(targetPage));
         params.set("pageSize", String(pageSize));
         if (targetSource) params.set("sourceType", targetSource);
+        if (urlSourceValue) params.set("sourceValue", urlSourceValue);
         const res = await fetch(`/api/videos?${params.toString()}`, {
           cache: "no-store",
         });
@@ -158,7 +164,7 @@ export function VideoTable({
         setLoading(false);
       }
     },
-    [pageSize]
+    [pageSize, urlSourceValue]
   );
 
   // 筛选变更 → 回到第 1 页
