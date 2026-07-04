@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
+import { startScheduler } from "@/lib/scheduler";
+
+// 首次加载时立即启动调度器(幂等,多处调用安全)
+startScheduler();
 
 
 const geistSans = Geist({

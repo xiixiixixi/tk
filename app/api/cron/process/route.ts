@@ -8,8 +8,12 @@ import {
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { requireCronAuth } from "@/lib/auth/cron";
 import { getAppConfigNumber } from "@/lib/app-config";
+import { startScheduler } from "@/lib/scheduler";
 import type { VideoRow, VideoUpdate } from "@/lib/pipeline/types";
 import type { AnalysisStatus } from "@/types";
+
+// 首次加载此模块时启动调度器(幂等,外部 cron service 每 5 分钟调用一次)
+startScheduler();
 
 // Pipeline handlers —— 由并行 agent 编写,部分模块可能尚未落盘。
 // @ts-ignore handler 模块可能尚未存在
