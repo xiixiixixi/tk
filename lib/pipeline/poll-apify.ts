@@ -76,9 +76,9 @@ export default async function pollApify(
 
   const existing = await getVideoByTiktokId(data.id);
 
-  if (existing) {
+  // existing 可能是它自己(关键词/博主采集入库时已带 tiktok_video_id)
+  if (existing && existing.id !== video.id) {
     await updateVideoStatus(video.id, "duplicate");
-    // (可选)把关联 task 的 related_video_id 改到已存在的 video,前端可直接跳详情
     await getSupabaseAdmin()
       .from("tasks")
       .update({ related_video_id: existing.id })

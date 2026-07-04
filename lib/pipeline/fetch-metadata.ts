@@ -19,6 +19,11 @@ import type { VideoRow, VideoUpdate } from "@/lib/pipeline/types";
 export default async function fetchMetadata(
   video: VideoRow
 ): Promise<{ nextStatus: AnalysisStatus; extra?: Partial<VideoUpdate> }> {
+  // 已通过关键词/博主采集拿到元数据的视频,跳过 Apify,直接进入下一步
+  if (video.tiktok_video_id) {
+    return { nextStatus: "metadata_fetched" };
+  }
+
   const url = video.original_url ?? "";
 
   if (shouldUseApifyMock()) {

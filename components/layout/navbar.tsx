@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
  * rust 橙 logo 块 + 衬线品牌名 + 当前页橙色高亮
  */
 const NAV_ITEMS = [
-  { href: "/videos", label: "首页" },
   { href: "/videos", label: "视频库" },
   { href: "/creators", label: "博主" },
   { href: "/keywords", label: "关键词" },
