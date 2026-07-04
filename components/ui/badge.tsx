@@ -1,36 +1,30 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2 dark:focus:ring-zinc-300",
+  "inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-zinc-900 text-zinc-50 shadow hover:bg-zinc-900/80 dark:bg-zinc-50 dark:text-zinc-900",
-        secondary:
-          "border-transparent bg-zinc-100 text-zinc-900 hover:bg-zinc-100/80 dark:bg-zinc-800 dark:text-zinc-50",
-        destructive:
-          "border-transparent bg-red-500 text-zinc-50 shadow hover:bg-red-500/80 dark:bg-red-900 dark:text-zinc-50",
-        outline: "text-zinc-950 dark:text-zinc-50",
+        default: "bg-neutral-900 text-neutral-50 dark:bg-neutral-100 dark:text-neutral-900",
+        secondary: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
+        destructive: "bg-neutral-900 text-neutral-50 dark:bg-neutral-100 dark:text-neutral-900",
+        outline: "border border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300",
+        ikb: "bg-[hsl(var(--color-ikb))] text-white",
+        lemon: "bg-[hsl(var(--color-lemon))] text-neutral-900",
+        orange: "bg-[hsl(var(--color-orange))] text-white",
+        lime: "bg-[hsl(var(--color-lime))] text-neutral-900",
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
+    defaultVariants: { variant: "default" },
   }
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  );
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
 export { Badge, badgeVariants };
