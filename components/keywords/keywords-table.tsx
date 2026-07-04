@@ -7,6 +7,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import type { KeywordWithStats } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
@@ -17,18 +18,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Muted } from "@/components/ui/typography";
+import { cn } from "@/lib/utils";
 
 /**
- * 关键词列表 — 表格形式(同博主逻辑)
- * 每行: 关键词 / 视频数 / 上次采集 / 操作(删除)
- * 点击行 → /videos?sourceType=keyword_search&sourceValue=关键词
+ * 关键词列表 — 表格形式(与博主列表一致)
+ * 每行: 关键词 / 视频数 / 已解析 / 上次采集 / 状态 / 操作(暂停/删除)
+ * 点击关键词 → /keywords/[id] 详情页
  */
 export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWithStats[] }) {
   const [keywords, setKeywords] = React.useState(initialKeywords);
   const [input, setInput] = React.useState("");
   const [adding, setAdding] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
+  const [pendingAction, setPendingAction] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState<KeywordWithStats | null>(null);
 
   async function refetch() {
@@ -66,18 +68,33 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
   async function handleDelete() {
     if (!deleting) return;
     const id = deleting.id;
-    setPendingDelete(id);
+    setPendingAction(id);
     try {
       await fetch(`/api/keywords/${id}`, { method: "DELETE" });
       setDeleting(null);
       await refetch();
     } finally {
-      setPendingDelete(null);
+      setPendingAction(null);
+    }
+  }
+
+  async function handleToggle(id: string, current: string) {
+    setPendingAction(id);
+    try {
+      await fetch(`/api/keywords/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: current === "active" ? "paused" : "active" }),
+      });
+      await refetch();
+    } finally {
+      setPendingAction(null);
     }
   }
 
   return (
     <div className="space-y-4">
+      {/* 添加关键词 */}
       <div className="flex gap-2">
         <Input
           placeholder="输入关键词"
@@ -94,6 +111,7 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
 
+      {/* 列表 */}
       {keywords.length === 0 ? (
         <EmptyState title="还没有添加关键词" description="输入关键词,系统会自动采集相关视频。" />
       ) : (
@@ -103,16 +121,18 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
               <tr className="text-left text-xs text-zinc-500">
                 <th className="px-4 py-2 font-medium">关键词</th>
                 <th className="px-4 py-2 font-medium text-right">视频数</th>
+                <th className="px-4 py-2 font-medium text-right">已解析</th>
                 <th className="px-4 py-2 font-medium">上次采集</th>
+                <th className="px-4 py-2 font-medium">状态</th>
                 <th className="px-4 py-2 font-medium text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {keywords.map(k => (
-                <tr key={k.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                <tr key={k.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                   <td className="px-4 py-3">
                     <Link
-                      href={`/videos?sourceType=keyword_search&sourceValue=${encodeURIComponent(k.keyword)}`}
+                      href={`/keywords/${k.id}`}
                       className="font-medium text-zinc-900 hover:text-[#C04A1A] hover:underline dark:text-zinc-100"
                     >
                       {k.keyword}
@@ -121,17 +141,34 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
                   <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
                     {k.video_count ?? 0}
                   </td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
+                    {k.analyzed_count ?? 0}
+                  </td>
                   <td className="px-4 py-3 text-xs text-zinc-500">
                     {k.last_fetch_time ? new Date(k.last_fetch_time).toLocaleDateString("zh-CN") : "—"}
                   </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={k.status === "active" ? "default" : "outline"}>
+                      {k.status === "active" ? "采集中" : "已暂停"}
+                    </Badge>
+                  </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setDeleting(k)}
-                      disabled={pendingDelete === k.id}
-                      className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:text-red-600 disabled:opacity-50"
-                    >
-                      <Trash2 className="inline h-3 w-3" />
-                    </button>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => handleToggle(k.id, k.status)}
+                        disabled={pendingAction === k.id}
+                        className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:text-[#C04A1A] disabled:opacity-50"
+                      >
+                        {k.status === "active" ? "暂停" : "启用"}
+                      </button>
+                      <button
+                        onClick={() => setDeleting(k)}
+                        disabled={pendingAction === k.id}
+                        className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:text-red-600 disabled:opacity-50"
+                      >
+                        <Trash2 className="inline h-3 w-3" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -144,7 +181,7 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
       <Dialog
         open={!!deleting}
         onOpenChange={(open) => {
-          if (pendingDelete) return;
+          if (pendingAction) return;
           if (!open) setDeleting(null);
         }}
       >
@@ -155,7 +192,7 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
             </DialogTitle>
             <DialogDescription asChild>
               <Muted>
-                将删除该关键词相关的 {deleting?.video_count ?? 0} 条视频
+                将删除该关键词已采集的 {deleting?.video_count ?? 0} 条视频
                 {deleting && deleting.analyzed_count > 0
                   ? `(其中 ${deleting.analyzed_count} 条已分析)`
                   : ""}
@@ -168,17 +205,17 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
               type="button"
               variant="outline"
               onClick={() => setDeleting(null)}
-              disabled={!!pendingDelete}
+              disabled={!!pendingAction}
             >
               取消
             </Button>
             <Button
               type="button"
               onClick={handleDelete}
-              disabled={!!pendingDelete}
+              disabled={!!pendingAction}
               className="min-w-[96px] bg-red-600 text-white hover:bg-red-700"
             >
-              {pendingDelete ? "删除中…" : "确认删除"}
+              {pendingAction ? "删除中…" : "确认删除"}
             </Button>
           </DialogFooter>
         </DialogContent>

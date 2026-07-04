@@ -140,7 +140,7 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
                   <tr key={c.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                     <td className="px-4 py-3">
                       <Link
-                        href={`/videos?author=${encodeURIComponent(handle)}`}
+                        href={`/creators/${c.id}`}
                         className="font-medium text-zinc-900 hover:text-[#C04A1A] hover:underline dark:text-zinc-100"
                       >
                         @{handle}
