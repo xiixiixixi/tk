@@ -290,9 +290,8 @@ export async function POST(req: Request) {
 
   const action = body.triggerCron;
   const path = TRIGGER_MAP[action];
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  // 没配 base 时(本地或部署失败) → 退化成本机相对 URL
-  const url = base ? `${base}${path}` : path;
+  const port = process.env.PORT || "3000";
+  const url = `http://localhost:${port}${path}`;
 
   // 两种 cron 端点耗时差异极大,分两条路径处理:
   //   - process / refresh-metrics:通常 <1s,短超时内能拿到结果 → await 拿真实返回值

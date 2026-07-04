@@ -94,7 +94,8 @@ async function sweepStuckVideos(): Promise<number> {
  */
 async function triggerNext(): Promise<void> {
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/process`, {
+    const port = process.env.PORT || "3000";
+    await fetch(`http://localhost:${port}/api/cron/process`, {
       cache: "no-store",
       headers: cronSecretHeader(),
     });

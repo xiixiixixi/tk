@@ -39,13 +39,11 @@ export async function POST(
     });
 
     // 立即触发 pipeline(不阻塞响应)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     const secret = process.env.CRON_SECRET;
-    if (appUrl) {
-      void fetch(`${appUrl}/api/cron/process`, {
-        headers: secret ? { "x-cron-secret": secret } : {},
-      }).catch(() => {});
-    }
+    const port = process.env.PORT || "3000";
+    void fetch(`http://localhost:${port}/api/cron/process`, {
+      headers: secret ? { "x-cron-secret": secret } : {},
+    }).catch(() => {});
 
     return NextResponse.json({
       video_id: id,

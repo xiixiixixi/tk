@@ -126,7 +126,8 @@ export async function GET(req: Request) {
 
   if (created > 0) {
     const secret = process.env.CRON_SECRET;
-    void fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/process`, {
+    const port = process.env.PORT || "3000";
+    void fetch(`http://localhost:${port}/api/cron/process`, {
       cache: "no-store",
       headers: secret ? { "x-cron-secret": secret } : {},
     }).catch((e) => console.error("trigger pipeline error:", e));

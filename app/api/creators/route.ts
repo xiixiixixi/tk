@@ -71,11 +71,11 @@ export async function POST(request: Request) {
       category,
     });
 
-    // fire-and-forget 触发抓取 — 让新博主立刻有反馈,不依赖 Railway cron 下次 schedule
+    // fire-and-forget 触发抓取 — 让新博主立刻有反馈,不依赖 cron 下次 schedule
+    // 用 localhost 而非公网 URL: Railway 容器无法通过公网域名访问自己
     const cronSecret = process.env.CRON_SECRET;
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-    void fetch(`${appUrl}/api/cron/monitor-creators`, {
+    const port = process.env.PORT || "3000";
+    void fetch(`http://localhost:${port}/api/cron/monitor-creators`, {
       cache: "no-store",
       headers: cronSecret ? { "x-cron-secret": cronSecret } : {},
     }).catch((e) =>

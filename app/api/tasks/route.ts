@@ -138,17 +138,13 @@ export async function POST(request: Request) {
     }
 
     // ---- 触发后台处理(fire-and-forget,不 await) ----
-    // 用默认 GET(不是 POST):/api/cron/process 只 export GET handler,
-    // 用 POST 会返 405 Method Not Allowed。带 X-Cron-Secret 通过鉴权。
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (appUrl) {
-      const secret = process.env.CRON_SECRET;
-      void fetch(`${appUrl}/api/cron/process`, {
-        headers: secret ? { "x-cron-secret": secret } : {},
-      }).catch(() => {
-        // cron 触发失败不影响主流程
-      });
-    }
+    const secret = process.env.CRON_SECRET;
+    const port = process.env.PORT || "3000";
+    void fetch(`http://localhost:${port}/api/cron/process`, {
+      headers: secret ? { "x-cron-secret": secret } : {},
+    }).catch(() => {
+      // cron 触发失败不影响主流程
+    });
 
     return Response.json(
       {
