@@ -29,7 +29,7 @@ const DEFAULTS: CrawlConfig = {
   min_collect_count: 0,
 };
 
-const inputCls = "h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50";
+const inputCls = "h-9 border-b-2 border-neutral-300 bg-transparent px-0 text-sm transition-colors placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:focus:border-neutral-100";
 
 export function CrawlConfigForm({ scope }: { scope: "creator" | "keyword" }) {
   const [config, setConfig] = React.useState<CrawlConfig>(DEFAULTS);

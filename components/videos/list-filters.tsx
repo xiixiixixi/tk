@@ -56,7 +56,7 @@ export function videoFiltersToParams(f: VideoFilters): URLSearchParams {
 }
 
 const inputCls =
-  "h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800";
+  "h-9 border-b-2 border-neutral-300 bg-transparent px-0 text-sm transition-colors placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:placeholder:text-neutral-500 dark:focus:border-neutral-100";
 
 interface ListFiltersProps {
   value: VideoFilters;
@@ -91,7 +91,7 @@ export function ListFilters({
           onChange={(e) => set("searchType", e.target.value as "all" | "title" | "author")}
           disabled={disabled}
           aria-label="搜索类型"
-          className={cn(inputCls, "rounded-r-none border-r-0 w-[88px] cursor-pointer")}
+          className={cn(inputCls, "border-r-0 w-[88px] cursor-pointer")}
         >
           <option value="all">全部</option>
           <option value="title">按标题</option>
@@ -110,7 +110,7 @@ export function ListFilters({
               "搜索标题或作者"
             }
             aria-label="搜索"
-            className={cn(inputCls, "w-[180px] rounded-l-none pl-8")}
+            className={cn(inputCls, "w-[180px] pl-8")}
           />
         </div>
       </div>
