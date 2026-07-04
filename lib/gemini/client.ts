@@ -20,6 +20,29 @@ export interface AnalyzeVideoInput extends AnalysisInput {
   coverR2Url?: string;
 }
 
+/**
+ * 截取第一个完整 JSON 对象/数组,去掉尾部多余文字。
+ * Gemini 偶尔在 JSON 后追加 "Here's your analysis" 之类。
+ */
+function trimTrailingGarbage(text: string): string {
+  const trimmed = text.trim();
+  const start = trimmed.search(/[{\[]/);
+  if (start === -1) return trimmed;
+  const stack: string[] = [];
+  for (let i = start; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}") {
+      if (stack.pop() !== "{") return trimmed;
+      if (stack.length === 0) return trimmed.slice(start, i + 1);
+    } else if (ch === "]") {
+      if (stack.pop() !== "[") return trimmed;
+      if (stack.length === 0) return trimmed.slice(start, i + 1);
+    }
+  }
+  return trimmed;
+}
+
 export async function analyzeVideo(input: AnalyzeVideoInput): Promise<AnalysisOutput> {
   if (shouldUseGeminiMock()) {
     return MOCK_ANALYSIS_RESULT;
@@ -82,8 +105,14 @@ export async function analyzeVideo(input: AnalyzeVideoInput): Promise<AnalysisOu
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error("OpenRouter 返回空");
 
-  // response_format: json_object 保证是纯 JSON,不用 regex 提取
-  return JSON.parse(text) as AnalysisOutput;
+  // response_format: json_object 不能完全阻止 Gemini 在 JSON 后面加文字,
+  // 提取第一个完整 JSON 对象/数组,忽略尾部垃圾
+  try {
+    return JSON.parse(text) as AnalysisOutput;
+  } catch {
+    const trimmed = trimTrailingGarbage(text);
+    return JSON.parse(trimmed) as AnalysisOutput;
+  }
 }
 
 /**
