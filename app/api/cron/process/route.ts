@@ -207,7 +207,12 @@ export async function GET(req: Request) {
         result: nextStatus,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null
+            ? JSON.stringify(err)
+            : String(err);
       await updateVideoStatus(video.id, "failed", {
         error_message: message.slice(0, 500),
       });
