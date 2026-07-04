@@ -90,23 +90,15 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
   const subtitle = findSubtitleAsset(video.video_assets);
   const subtitleText = subtitle?.description?.trim() || null;
 
-  const retryUrl = video.original_url || video.canonical_url || "";
-  const canRetry =
-    video.analysis_status === "failed" && retryUrl.length > 0;
+  const canRetry = video.analysis_status === "failed";
 
-  // failed → 调 /api/tasks 创建一条新的 analyze_video 任务
+  // failed → 调 /api/videos/:id/reanalyze 重置原视频状态,不建新记录
   const handleRetry = React.useCallback(async () => {
-    if (!retryUrl) return;
     setRetrying(true);
     setRetryError(null);
     try {
-      const res = await fetch("/api/tasks", {
+      const res = await fetch(`/api/videos/${video.id}/reanalyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task_type: "analyze_video",
-          input_value: retryUrl,
-        }),
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as {
@@ -114,13 +106,13 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
         };
         throw new Error(payload.error || `HTTP ${res.status}`);
       }
-      // 新任务创建成功,让 server 重新决定渲染哪个视图
+      // 重置成功,刷新页面让 server 重新渲染(进入 pending 状态 + 轮询)
       router.refresh();
     } catch (err) {
       setRetryError(err instanceof Error ? err.message : "提交失败");
       setRetrying(false);
     }
-  }, [retryUrl, router]);
+  }, [video.id, router]);
 
   return (
     <section className="mx-auto max-w-6xl px-6">

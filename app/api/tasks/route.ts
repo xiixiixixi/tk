@@ -114,15 +114,27 @@ export async function POST(request: Request) {
       input_value: trimmed,
     });
 
-    // ---- analyze_video:写 videos + 回填 task ----
-    // videos 表的 analysis_status DEFAULT 'new'、source_type DEFAULT 'manual_video',
-    // 这里显式写 source_type 保持与原 URL 关联的语义清晰
+    // ---- analyze_video:查重 + 写 videos + 回填 task ----
+    // 查重:同一个 original_url 已有记录且非 failed → 复用,不建新记录(避免重复)
     if (taskType === "analyze_video") {
-      const { id: videoId } = await insertVideo({
-        source_type: "manual_video",
-        original_url: trimmed,
-      });
-      await updateTask(taskId, { related_video_id: videoId });
+      const { data: existing } = await getSupabaseAdmin()
+        .from("videos")
+        .select("id, analysis_status")
+        .eq("original_url", trimmed)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing && existing.analysis_status !== "failed") {
+        // 已存在(解析中/已完成/重复)→ 直接复用,不建新 video
+        await updateTask(taskId, { related_video_id: existing.id });
+      } else {
+        const { id: videoId } = await insertVideo({
+          source_type: "manual_video",
+          original_url: trimmed,
+        });
+        await updateTask(taskId, { related_video_id: videoId });
+      }
     }
 
     // ---- 触发后台处理(fire-and-forget,不 await) ----
