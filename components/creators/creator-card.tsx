@@ -33,7 +33,8 @@ import { formatRelative } from "@/lib/utils";
  * - 暂停/启用 调 PATCH /api/creators/[id] {status},删除调 DELETE
  * - CreatorsList 监听 monitors:changed 事件,自动 refetch
  *
- * Vercel 兼容清理:删除了「立即抓取」按钮(Vercel cron 自动跑;手动在 Hobby 上不可靠)
+ * 添加博主时 POST 已 fire-and-forget 触发 monitor-creators,
+ * 不再需要「立即抓取」按钮(Railway cron 兜底)
  */
 
 // ============================================================

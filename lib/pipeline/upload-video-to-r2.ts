@@ -11,7 +11,7 @@ import type { AnalysisStatus } from "@/types";
  *
  * v0.8:Apify 反爬升级后拿不到视频直链,改为调 Railway Worker(yt-dlp)下载视频。
  *   - 视频:POST { url, r2Key } 到 worker → worker 用 yt-dlp 下 → 传 R2 → 返回 r2Url
- *   - 封面:从 Apify dataset 拿 coverUrl → Vercel 自己下载传 R2(小文件,不超时)
+ *   - 封面:从 Apify dataset 拿 coverUrl → Next.js 端自己下载传 R2(小文件)
  *
  * 降级:
  *   - worker 失败/超时/未配 → video_file_url 留空,Gemini 用封面+字幕分析

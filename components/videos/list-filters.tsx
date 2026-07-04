@@ -15,10 +15,11 @@ import type { StatusFilterValue } from "./status-filter";
 
 export interface VideoFilters {
   search: string;
+  searchType: "all" | "title" | "author"; // 搜索维度:全部/按标题/按作者
   status: StatusFilterValue;
   minPlayCount: number | null;
   minLikeCount: number | null;
-  publishedAfter: string | null; // ISO date (yyyy-mm-dd)
+  publishedAfter: string | null;
   minDurationSec: number | null;
   maxDurationSec: number | null;
   sortBy: "created_at" | "play_count" | "like_count";
@@ -27,6 +28,7 @@ export interface VideoFilters {
 
 export const DEFAULT_VIDEO_FILTERS: VideoFilters = {
   search: "",
+  searchType: "all",
   status: "all",
   minPlayCount: null,
   minLikeCount: null,
@@ -41,6 +43,7 @@ export const DEFAULT_VIDEO_FILTERS: VideoFilters = {
 export function videoFiltersToParams(f: VideoFilters): URLSearchParams {
   const p = new URLSearchParams();
   if (f.search.trim()) p.set("search", f.search.trim());
+  if (f.searchType !== "all") p.set("searchType", f.searchType);
   if (f.status !== "all") p.set("status", f.status);
   if (f.minPlayCount != null) p.set("minPlayCount", String(f.minPlayCount));
   if (f.minLikeCount != null) p.set("minLikeCount", String(f.minLikeCount));
@@ -81,18 +84,35 @@ export function ListFilters({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2.5", className)}>
-      {/* 搜索 */}
-      <div className="relative">
-        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-        <input
-          type="text"
-          value={value.search}
-          onChange={(e) => set("search", e.target.value)}
+      {/* 搜索类型 Tab + 搜索框 */}
+      <div className="flex items-center gap-0">
+        <select
+          value={value.searchType}
+          onChange={(e) => set("searchType", e.target.value as "all" | "title" | "author")}
           disabled={disabled}
-          placeholder="搜索标题或作者"
-          aria-label="搜索标题或作者"
-          className={cn(inputCls, "w-[220px] pl-8")}
-        />
+          aria-label="搜索类型"
+          className={cn(inputCls, "rounded-r-none border-r-0 w-[88px] cursor-pointer")}
+        >
+          <option value="all">全部</option>
+          <option value="title">按标题</option>
+          <option value="author">按作者</option>
+        </select>
+        <div className="relative flex-1">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            value={value.search}
+            onChange={(e) => set("search", e.target.value)}
+            disabled={disabled}
+            placeholder={
+              value.searchType === "author" ? "搜索作者名" :
+              value.searchType === "title" ? "搜索视频标题" :
+              "搜索标题或作者"
+            }
+            aria-label="搜索"
+            className={cn(inputCls, "w-[180px] rounded-l-none pl-8")}
+          />
+        </div>
       </div>
 
       {/* 最低播放 */}

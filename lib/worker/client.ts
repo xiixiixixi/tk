@@ -1,13 +1,13 @@
 /**
  * Railway Worker 客户端(视频下载微服务)
  *
- * Vercel 端调 worker:传 TikTok URL + R2 key,worker 用 yt-dlp 下载并传 R2,返回 r2Url。
+ * Next.js 端调 worker:传 TikTok URL + R2 key,worker 用 yt-dlp 下载并传 R2,返回 r2Url。
  * worker 不在则降级(返回 null,handler 走封面+字幕分析)。
  *
- * tech.md §2.8: worker 是独立 Railway 服务,Vercel 通过 HTTP 调用。
+ * tech.md §2.8: worker 是独立 Railway 服务,通过 HTTP 调用。
  */
 
-const DEFAULT_TIMEOUT_MS = 9000; // 留 1s 余量给 Hobby 10s 限制
+const DEFAULT_TIMEOUT_MS = 8000; // worker 端处理 + 网络 RTT 经验值
 
 export interface DownloadVideoResult {
   r2Url: string;

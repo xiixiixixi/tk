@@ -98,7 +98,7 @@ export function shouldUseGeminiMock(): boolean {
  *
  * - 超过 25MB 返回 null(Gemini 视频上限,超过会 400)
  * - 下载失败返回 null(调用方降级用封面)
- * - 用 AbortController 限 8s(Hobby 10s 超时留余量)
+ * - 用 AbortController 限 8s
  */
 async function fetchVideoAsBase64(videoUrl: string): Promise<string | null> {
   try {

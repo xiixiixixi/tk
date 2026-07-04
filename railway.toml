@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+# Railway Cron Job 类型 service 会按 schedule 启停执行 startCommand,
+# 执行完自动停止(Web Service 才会 restartPolicy)。
+# 默认按 web service 配置,这里不加 restartPolicy,让 Cron Job service 自己用 Dashboard 配置。
+restartPolicyType = "ON_FAILURE"

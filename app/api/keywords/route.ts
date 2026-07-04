@@ -207,6 +207,17 @@ export async function POST(request: Request) {
 
     await insertKeyword(insert);
 
+    // fire-and-forget 触发抓取 — 让新关键词立刻有反馈,不依赖 Railway cron 下次 schedule
+    const cronSecret = process.env.CRON_SECRET;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+    void fetch(`${appUrl}/api/cron/search-keywords`, {
+      cache: "no-store",
+      headers: cronSecret ? { "x-cron-secret": cronSecret } : {},
+    }).catch((e) =>
+      console.error("[keywords POST] trigger search-keywords error:", e)
+    );
+
     return Response.json(
       { keyword: insert.keyword, status: "active" },
       { status: 201 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireCronAuth } from "@/lib/auth/cron";
+import { getCrawlConfig, passesCrawlFilter } from "@/lib/crawl-config";
 import {
   getVideoByTiktokId,
   insertVideo,
@@ -65,6 +66,9 @@ export async function GET(req: Request) {
   let refreshed = 0;
   const errors: string[] = [];
 
+  // 读取全局采集配置(过滤条件)
+  const crawlCfg = await getCrawlConfig("creator");
+
   for (const creator of activeCreators) {
     try {
       // D2:首次订阅采最近 N 条,后续增量采 M 条
@@ -91,8 +95,15 @@ export async function GET(req: Request) {
       }
 
       let creatorCreated = 0;
+      let skippedByFilter = 0;
       for (const data of videos) {
         if (!data.id) continue;
+
+        // 全局 crawl_config 过滤:不符合条件的跳过不入库(省解析成本)
+        if (!passesCrawlFilter(data, crawlCfg)) {
+          skippedByFilter++;
+          continue;
+        }
 
         const existing = await getVideoByTiktokId(data.id);
         if (existing) {

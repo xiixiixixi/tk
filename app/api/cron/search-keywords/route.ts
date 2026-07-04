@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { requireCronAuth } from "@/lib/auth/cron";
+import { getCrawlConfig, passesCrawlFilter } from "@/lib/crawl-config";
 import { getVideoByTiktokId, insertVideo } from "@/lib/supabase/queries";
 import {
   getRunDataset,
@@ -56,6 +57,9 @@ export async function GET(req: Request) {
   let filtered = 0;
   const errors: string[] = [];
 
+  // 读取全局采集配置(关键词级)
+  const crawlCfg = await getCrawlConfig("keyword");
+
   for (const keyword of keywords as KeywordRow[]) {
     try {
       // Mock 模式强制关闭 exclude_slideshow:mock 数据没 mediaUrls/downloadUrl,
@@ -80,8 +84,13 @@ export async function GET(req: Request) {
           skipped++;
           continue;
         }
-        // 入库前先过筛选,省后续解析成本
+        // 入库前先过 per-keyword 筛选,省后续解析成本
         if (keywordFilterReject(data, criteria) !== null) {
+          filtered++;
+          continue;
+        }
+        // 再过全局 crawl_config 筛选(时间范围/播放/点赞/时长/图文等)
+        if (!passesCrawlFilter(data, crawlCfg)) {
           filtered++;
           continue;
         }

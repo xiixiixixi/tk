@@ -71,6 +71,17 @@ export async function POST(request: Request) {
       category,
     });
 
+    // fire-and-forget 触发抓取 — 让新博主立刻有反馈,不依赖 Railway cron 下次 schedule
+    const cronSecret = process.env.CRON_SECRET;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+    void fetch(`${appUrl}/api/cron/monitor-creators`, {
+      cache: "no-store",
+      headers: cronSecret ? { "x-cron-secret": cronSecret } : {},
+    }).catch((e) =>
+      console.error("[creators POST] trigger monitor-creators error:", e)
+    );
+
     return Response.json(
       { creator_url: normalized.url, status: "pending" },
       { status: 201 }

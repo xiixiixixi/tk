@@ -46,6 +46,8 @@ export interface ListVideosParams {
   sourceValue?: string;
   /** 标题/作者模糊搜索 */
   search?: string;
+  /** 搜索维度:all=标题+作者 / title=仅标题 / author=仅作者 */
+  searchType?: "all" | "title" | "author";
   /** 通用列表筛选(每个列表页都有,对应采集筛选的同维度) */
   minPlayCount?: number;
   minLikeCount?: number;
@@ -73,6 +75,7 @@ export async function listVideos(params: ListVideosParams = {}): Promise<ListVid
     authorId,
     sourceValue,
     search,
+    searchType,
     minPlayCount,
     minLikeCount,
     publishedAfter,

@@ -195,7 +195,7 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
             description={
               filters.search || filters.status !== "all"
                 ? "试试清空筛选条件,或切换其他状态查看全部视频。"
-                : "等待定时抓取触发后会出现在这里。也可以手动从博主列表触发立即抓取。"
+                : "等待定时抓取触发后会出现在这里。也可以从 settings 页面手动触发 cron 立即抓取。"
             }
           />
         </Card>

@@ -115,7 +115,7 @@ export async function GET() {
  * 接受 { triggerCron: 'process' | 'refresh-metrics' | 'monitor-creators' | 'search-keywords' }
  * 内部 fetch 对应 cron endpoint(走完整 HTTP 路径,触发链路不变)。
  *
- * 注意:不轮询、不等待返回(json 上游可能 5–30s,超出 Vercel Hobby 10s 上限)。
+ * 注意:不轮询、不等待返回(json 上游可能 5–30s)。
  * 用 fire-and-forget + 短超时,失败只记日志。
  */
 type TriggerAction = "process" | "refresh-metrics" | "monitor-creators" | "search-keywords";
@@ -166,7 +166,6 @@ export async function POST(req: Request) {
   //   - process / refresh-metrics:通常 <1s,短超时内能拿到结果 → await 拿真实返回值
   //   - monitor-creators / search-keywords:要遍历多个目标 + 入库,可能 5–30s
   //     → 真 fire-and-forget,不 await,立即返回"已触发"
-  //     (Vercel Hobby 10s 函数超时,await 必然 abort;之前 3s abort 就是误把慢端点也 await 了)
   const isSlow = action === "monitor-creators" || action === "search-keywords";
 
   // 服务端内部调 cron,带 X-Cron-Secret 通过鉴权
@@ -186,7 +185,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // 快端点:8s 超时拿真实结果(留 2s 余量给 Hobby 10s 上限)
+  // 快端点:8s 超时拿真实结果
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
