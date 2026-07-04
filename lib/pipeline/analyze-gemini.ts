@@ -1,4 +1,5 @@
 import { analyzeVideo } from "@/lib/gemini/client";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { insertAnalysis, updateVideo, listVideoAssets } from "@/lib/supabase/queries";
 import { assembleFallbackSubtitle } from "@/lib/pipeline/subtitle-utils";
 import type { VideoRow, VideoUpdate } from "@/lib/pipeline/types";
@@ -37,6 +38,13 @@ export default async function analyzeWithGemini(
     videoR2Url: video.video_file_url ?? undefined,
     coverR2Url: video.cover_url ?? undefined,
   });
+
+  // 清理旧分析结果(重试场景:上次 insert 成功但 updateVideo 失败)
+  await getSupabaseAdmin()
+    .from("analysis_results")
+    .delete()
+    .eq("video_id", video.id)
+    .eq("analysis_version", 1);
 
   await insertAnalysis({
     video_id: video.id,
