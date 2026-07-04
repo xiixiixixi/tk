@@ -122,11 +122,9 @@ export function keywordFilterReject(
     }
   }
   if (c.exclude_slideshow) {
-    // slideshow 判定:无 mediaUrls 视频直链但有多图,或 Apify 标记 isSlideshow
-    const isSlideshow =
-      (data as { isSlideshow?: boolean }).isSlideshow === true ||
-      (!data.mediaUrls?.length && !data.videoMeta?.downloadUrl && !data.submittedVideoUrl);
-    if (isSlideshow) return "slideshow";
+    // 仅信任 Apify 明确的 isSlideshow 标记,
+    // 不用"无下载链接"推断(downloadVideos=false 时 mediaUrls/downloadUrl 总是空)
+    if ((data as { isSlideshow?: boolean }).isSlideshow === true) return "slideshow";
   }
   return null;
 }
