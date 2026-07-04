@@ -139,7 +139,8 @@ export async function GET(req: Request) {
   if (authFail) return authFail;
 
   // 兜底:扫描卡在中间态超过 STUCK_HOURS 的视频
-  await sweepStuckVideos();
+  // swallow 异常,超时不阻塞主流程
+  try { await sweepStuckVideos(); } catch {}
 
   // ---- 从 DB 读并发配置(不存在时回退默认) ----
   let batchSize = 3;
@@ -147,8 +148,8 @@ export async function GET(req: Request) {
   try {
     batchSize = await getAppConfigNumber("pipeline_batch_size", 3);
     concurrency = await getAppConfigNumber("pipeline_concurrency", 2);
-  } catch (e) {
-    console.warn("[process] 读并发配置失败,用默认值", e);
+  } catch {
+    // 降级用默认值
   }
 
   // ---- 批量取待处理视频(FOR UPDATE SKIP LOCKED 保证不重复) ----
