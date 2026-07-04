@@ -111,11 +111,13 @@ export async function GET(req: Request) {
         created++;
       }
     } catch (err) {
-      errors.push(
-        `keyword "${keyword.keyword}": ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null
+            ? JSON.stringify(err)
+            : String(err);
+      errors.push(`keyword "${keyword.keyword}": ${msg}`);
     }
   }
 

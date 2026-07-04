@@ -140,11 +140,13 @@ export async function GET(req: Request) {
         last_fetch_video_count: creatorCreated,
       });
     } catch (err) {
-      errors.push(
-        `creator ${creator.creator_name ?? creator.id}: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null
+            ? JSON.stringify(err)
+            : String(err);
+      errors.push(`creator ${creator.creator_name ?? creator.id}: ${msg}`);
     }
   }
 
