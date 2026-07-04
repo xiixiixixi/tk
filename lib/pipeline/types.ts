@@ -81,9 +81,16 @@ export interface CreatorRow {
   category: string | null;
   monitor_frequency: string;
   last_fetch_time: string | null;
+  last_fetch_video_count: number;
   status: string;
   created_at: string;
   updated_at: string;
+}
+
+/** 博主卡片展示用:CreatorRow + 按 author_id 实时统计的视频数 */
+export interface CreatorWithStats extends CreatorRow {
+  video_count: number; // 该博主名下视频总数(按 author_id count)
+  analyzed_count: number; // 其中已解析完成(analysis_status='completed')数
 }
 
 export interface KeywordRow {
@@ -95,8 +102,23 @@ export interface KeywordRow {
   monitor_frequency: string;
   last_fetch_time: string | null;
   status: string;
+  // Phase 6 采集筛选条件(null = 该维度不限制)
+  min_play_count: number | null;
+  min_like_count: number | null;
+  min_engagement_rate: number | null;
+  published_after: string | null;
+  min_duration_sec: number | null;
+  max_duration_sec: number | null;
+  unwanted_hashtags: string[] | null;
+  exclude_slideshow: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** 关键词卡片展示用:KeywordRow + 采集统计 */
+export interface KeywordWithStats extends KeywordRow {
+  video_count: number; // 该关键词采集到的视频数(source_value=keyword)
+  analyzed_count: number;
 }
 
 export interface TaskRow {
@@ -199,12 +221,36 @@ export type CreatorInsert = {
   monitor_frequency?: string;
 };
 
+/** creators 可更新字段(状态切换 / 采集统计回写) */
+export type CreatorUpdate = {
+  status?: string;
+  creator_id?: string | null;
+  creator_name?: string | null;
+  category?: string | null;
+  last_fetch_time?: string | null;
+  last_fetch_video_count?: number;
+};
+
 export type KeywordInsert = {
   keyword: string;
   region?: string;
   language?: string;
   fetch_limit?: number;
   monitor_frequency?: string;
+  // Phase 6 筛选条件
+  min_play_count?: number | null;
+  min_like_count?: number | null;
+  min_engagement_rate?: number | null;
+  published_after?: string | null;
+  min_duration_sec?: number | null;
+  max_duration_sec?: number | null;
+  unwanted_hashtags?: string[] | null;
+  exclude_slideshow?: boolean;
+};
+
+/** keywords 可更新字段(状态切换 / 筛选条件编辑) */
+export type KeywordUpdate = Partial<Omit<KeywordInsert, "keyword">> & {
+  status?: string;
 };
 
 // ============================================================

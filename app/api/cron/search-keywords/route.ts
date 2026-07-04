@@ -10,8 +10,13 @@ import {
   shouldUseApifyMock,
 } from "@/lib/apify/client";
 import { mockApifyVideo } from "@/lib/apify/mock";
-import { apifyResultToVideoUpdate } from "@/lib/apify/mapper";
+import {
+  apifyResultToVideoUpdate,
+  keywordFilterReject,
+  type KeywordFilterCriteria,
+} from "@/lib/apify/mapper";
 import type { ApifyTikTokResult } from "@/types";
+import type { KeywordRow } from "@/lib/pipeline/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +26,7 @@ export const dynamic = "force-dynamic";
  * - Mock 模式:每个关键词生成 N 个假视频入库
  * - 真实模式:startSearchRun → 轮询 → dataset → 按真实 tiktok_video_id 去重入库
  *
+ * 入库前先按关键词的筛选条件过滤(省解析成本)。
  * 入库后调 /api/cron/process 让 Phase 2 调度器接手分析。
  */
 export async function GET(req: Request) {
@@ -47,10 +53,24 @@ export async function GET(req: Request) {
 
   let created = 0;
   let skipped = 0;
+  let filtered = 0;
   const errors: string[] = [];
 
-  for (const keyword of keywords) {
+  for (const keyword of keywords as KeywordRow[]) {
     try {
+      // Mock 模式强制关闭 exclude_slideshow:mock 数据没 mediaUrls/downloadUrl,
+      // 不关会被判 slideshow 全拒。其他维度沿用 keyword 真实值。
+      const criteria: KeywordFilterCriteria = {
+        min_play_count: keyword.min_play_count,
+        min_like_count: keyword.min_like_count,
+        min_engagement_rate: keyword.min_engagement_rate,
+        published_after: keyword.published_after,
+        min_duration_sec: keyword.min_duration_sec,
+        max_duration_sec: keyword.max_duration_sec,
+        unwanted_hashtags: keyword.unwanted_hashtags,
+        exclude_slideshow: isMock ? false : keyword.exclude_slideshow,
+      };
+
       const videos = isMock
         ? mockKeywordVideos(keyword)
         : await fetchRealSearchVideos(keyword.keyword, keyword.fetch_limit ?? 20);
@@ -58,6 +78,11 @@ export async function GET(req: Request) {
       for (const data of videos) {
         if (!data.id) {
           skipped++;
+          continue;
+        }
+        // 入库前先过筛选,省后续解析成本
+        if (keywordFilterReject(data, criteria) !== null) {
+          filtered++;
           continue;
         }
         // ⚠️ 真实去重:按 tiktok_video_id,不再用 Date.now()
@@ -101,6 +126,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     processed: created,
     skipped,
+    filtered,
     active_keywords: keywords.length,
     mode: isMock ? "mock" : "real",
     errors: errors.length > 0 ? errors : undefined,

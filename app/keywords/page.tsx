@@ -1,7 +1,7 @@
 import { H1, Lead, Muted } from "@/components/ui/typography";
 import { KeywordsList } from "@/components/keywords/keyword-card";
-import { listKeywords } from "@/lib/supabase/queries";
-import type { KeywordRow } from "@/lib/pipeline/types";
+import { listKeywordsWithStats } from "@/lib/supabase/queries";
+import type { KeywordWithStats } from "@/lib/pipeline/types";
 
 /**
  * 关键词监控页 — Editorial / 杂志风 + 服务端数据
@@ -22,12 +22,12 @@ import type { KeywordRow } from "@/lib/pipeline/types";
 export const dynamic = "force-dynamic"; // 每次请求都拉新数据,新增关键词立即可见
 
 export default async function KeywordsPage() {
-  let keywords: KeywordRow[] = [];
+  let keywords: KeywordWithStats[] = [];
   try {
-    keywords = await listKeywords();
+    keywords = await listKeywordsWithStats();
   } catch (err) {
     // 数据查询失败时,仍展示空列表 + EmptyState,避免整个页面崩溃
-    console.error("[keywords/page] listKeywords 失败", err);
+    console.error("[keywords/page] listKeywordsWithStats 失败", err);
   }
 
   return (

@@ -1,11 +1,13 @@
-import { listCreators, insertCreator } from "@/lib/supabase/queries";
-import type { CreatorInsert } from "@/lib/pipeline/types";
+import { listCreatorsWithStats, insertCreator } from "@/lib/supabase/queries";
+import { normalizeCreatorInput } from "@/lib/apify/client";
+
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/creators
- * 列出所有监控中的博主(按 created_at 倒序)。
+ * 列出所有监控中的博主,带视频统计(按 author_id count)。
  *
- * 200 → { creators: CreatorRow[] }
+ * 200 → { creators: CreatorWithStats[] }   // 每项含 video_count / analyzed_count
  * 500 → 查询失败
  *
  * POST /api/creators
@@ -13,36 +15,21 @@ import type { CreatorInsert } from "@/lib/pipeline/types";
  *
  * 请求体:
  *   {
- *     creator_url: string,                  // 必填,TikTok 博主主页 URL
- *     creator_id?: string,                  // 可选,TikTok 内部 uid
- *     creator_name?: string,                // 可选,@用户名
- *     category?: string,                    // 可选,分类标签
- *     monitor_frequency?: string,           // 可选,默认 'daily'
+ *     creator_url: string,       // 必填,接受 @username / username / 完整 URL
+ *     category?: string,         // 可选,分类标签
  *   }
  *
  * 校验:
- *   - creator_url 必填,必须是 https://...tiktok.com/@xxx 形式
+ *   - creator_url 必填,经 normalizeCreatorInput 归一化失败返回 400
  *
  * 201 → { creator_url: string, status: 'pending' }
- * 400 → 缺字段 / URL 不合法
+ * 400 → 缺字段 / 输入无法识别为 TikTok 博主
  * 500 → 写库失败
  */
 
-// TikTok 博主主页 URL(只匹配 /@username 形式;短链 / 视频链不算博主主页)
-// 形如 https://www.tiktok.com/@scout2015
-const TIKTOK_CREATOR_URL_PATTERN =
-  /^https?:\/\/(?:[a-z]{2}\.)?(?:www\.|m\.)?tiktok\.com\/@[\w._-]{1,24}\/?$/i;
-
-function isValidCreatorUrl(url: unknown): url is string {
-  if (typeof url !== "string") return false;
-  const trimmed = url.trim();
-  if (trimmed.length === 0 || trimmed.length > 512) return false;
-  return TIKTOK_CREATOR_URL_PATTERN.test(trimmed);
-}
-
 export async function GET() {
   try {
-    const creators = await listCreators();
+    const creators = await listCreatorsWithStats();
     return Response.json({ creators }, { status: 200 });
   } catch (err) {
     console.error("[GET /api/creators] 查询失败", err);
@@ -52,30 +39,40 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<CreatorInsert>;
+    const body = (await request.json()) as {
+      creator_url?: unknown;
+      category?: unknown;
+    };
 
-    const creatorUrl = body.creator_url;
-    if (!isValidCreatorUrl(creatorUrl)) {
+    const rawInput = body.creator_url;
+    if (typeof rawInput !== "string" || rawInput.trim().length === 0) {
       return Response.json(
-        { error: "creator_url 必须是合法的 TikTok 博主主页 URL(https://www.tiktok.com/@username)" },
+        { error: "creator_url 必填,接受 @username / username / 完整 TikTok URL" },
         { status: 400 }
       );
     }
 
-    const insert: CreatorInsert = {
-      creator_url: creatorUrl.trim(),
-      ...(body.creator_id != null ? { creator_id: String(body.creator_id) } : {}),
-      ...(body.creator_name != null ? { creator_name: String(body.creator_name) } : {}),
-      ...(body.category != null ? { category: String(body.category) } : {}),
-      ...(body.monitor_frequency != null
-        ? { monitor_frequency: String(body.monitor_frequency) }
-        : {}),
-    };
+    const normalized = normalizeCreatorInput(rawInput);
+    if (!normalized) {
+      return Response.json(
+        { error: "无法识别为合法的 TikTok 博主(@username / username / 完整 URL)" },
+        { status: 400 }
+      );
+    }
 
-    await insertCreator(insert);
+    const category =
+      typeof body.category === "string" && body.category.trim().length > 0
+        ? body.category.trim()
+        : null;
+
+    await insertCreator({
+      creator_url: normalized.url,
+      creator_name: normalized.handle,
+      category,
+    });
 
     return Response.json(
-      { creator_url: insert.creator_url, status: "pending" },
+      { creator_url: normalized.url, status: "pending" },
       { status: 201 }
     );
   } catch (err) {

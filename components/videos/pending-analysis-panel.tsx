@@ -24,7 +24,7 @@ import type { AnalysisResultRow, VideoDetail } from "@/lib/pipeline/types";
  *
  *   1. 非终态(queued / processing):显示进度文案 + 自动每 3 秒轮询 GET /api/videos/:id
  *      - 拉到 analysis_result 后直接切到 <AnalysisView />
- *      - 卡住 > 60 秒时主动踹一脚 fetch('/api/cron/process')(链断裂兜底)
+ *      - 后台由 Railway 常驻 cron 推进管线,前端只负责轮询
  *   2. 终态 failed:显示错误文案 + 重试链接
  *   3. 终态 duplicate:显示"该视频已被分析过"+ 跳到原视频
  *
@@ -33,7 +33,6 @@ import type { AnalysisResultRow, VideoDetail } from "@/lib/pipeline/types";
  */
 
 const POLL_INTERVAL_MS = 3_000;
-const STUCK_THRESHOLD_MS = 60_000;
 
 interface PendingAnalysisPanelProps {
   video: VideoDetail;
@@ -65,8 +64,6 @@ export function PendingAnalysisPanel({
     if (isTerminal) return;
 
     let cancelled = false;
-    let stuckKickFired = false;
-    const startedAt = Date.now();
 
     const poll = async () => {
       try {
@@ -83,15 +80,6 @@ export function PendingAnalysisPanel({
         setPollError(null);
         setStatus(payload.video.analysis_status as AnalysisStatus);
         setAnalysis(payload.latest_analysis);
-
-        // 卡住 > 60s,踹一脚 cron 接力
-        const elapsed = Date.now() - startedAt;
-        if (!stuckKickFired && elapsed > STUCK_THRESHOLD_MS) {
-          stuckKickFired = true;
-          fetch("/api/cron/process").catch(() => {
-            /* swallow — 下次轮询会再试 */
-          });
-        }
 
         // 状态变终态 → 停止轮询
         const newTerminal = (
@@ -222,7 +210,7 @@ export function PendingAnalysisPanel({
 
           <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-500">
             <Loader2 className="h-3 w-3 animate-spin" />
-            每 3 秒自动刷新 · 卡住超过 1 分钟会自动重试
+            每 3 秒自动刷新 · 后台自动处理中
           </div>
 
           {video.original_url ? (

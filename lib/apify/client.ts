@@ -104,6 +104,18 @@ export async function startCreatorRun(
   });
 }
 
+/** 首次订阅采集条数上限(D2:大博主不拉全量,只采最近 N 条建基线) */
+export function creatorFirstFetchLimit(): number {
+  const n = Number(process.env.CREATOR_FIRST_FETCH_LIMIT);
+  return Number.isInteger(n) && n > 0 ? n : 50;
+}
+
+/** 后续增量每轮采集条数(取最新一批) */
+export function creatorIncrementalLimit(): number {
+  const n = Number(process.env.CREATOR_INCREMENTAL_LIMIT);
+  return Number.isInteger(n) && n > 0 ? n : 20;
+}
+
 /** 关键词搜索(search_keyword),返回 runId */
 export async function startSearchRun(
   query: string,
@@ -131,4 +143,27 @@ export function shouldUseApifyMock(): boolean {
 export function extractProfileHandle(creatorUrl: string): string | null {
   const m = creatorUrl.match(/tiktok\.com\/@([\w._-]+)/i);
   return m ? m[1] : null;
+}
+
+/**
+ * 放宽订阅输入(D:接受 @username / username / 完整 URL)→ 归一化
+ * @returns { handle, url } 或 null(无法识别)
+ */
+export function normalizeCreatorInput(
+  raw: string
+): { handle: string; url: string } | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+
+  // 完整 URL
+  const fromUrl = extractProfileHandle(trimmed);
+  if (fromUrl) {
+    return { handle: fromUrl, url: `https://www.tiktok.com/@${fromUrl}` };
+  }
+  // @username 或 裸 username(允许字母数字下划线点连字符,1-24 位)
+  const bare = trimmed.replace(/^@/, "");
+  if (/^[\w._-]{1,24}$/.test(bare)) {
+    return { handle: bare, url: `https://www.tiktok.com/@${bare}` };
+  }
+  return null;
 }

@@ -2,16 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Link2,
-  User,
-  Hash,
-  Sparkles,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 
 import {
   Table,
@@ -22,9 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Numeric, Muted } from "@/components/ui/typography";
 import { StatusBadge } from "@/components/tasks/status-badge";
-import { EmptyState } from "@/components/ui/empty-state";
 import {
   ListFilters,
   DEFAULT_VIDEO_FILTERS,
@@ -32,36 +24,21 @@ import {
   type VideoFilters,
 } from "@/components/videos/list-filters";
 import { cn, truncate, formatRelative, formatCount, isTerminalStatus } from "@/lib/utils";
-import { SOURCE_TYPES, type AnalysisStatus, type SourceType } from "@/types";
+import type { AnalysisStatus } from "@/types";
 import type { VideoListItem } from "@/lib/pipeline/types";
 
 /**
- * 视频库主表 — Editorial 杂志风格。
+ * 关键词详情页 — 视频列表客户端组件。
  *
  * 数据流:
- *   1. 服务端在 app/videos/page.tsx 调用 listVideos({ page: 1, pageSize })
- *      把 initialVideos / initialTotal 传进来(避免首屏空白)
- *   2. 客户端 useState 接管:换页 / 切筛选 → fetch('/api/videos?...')
- *   3. 副作用:router.replace 同步 URL searchParams(可分享 / 可后退)
- *   4. 轮询:当前页含非终态视频时,每 5 秒静默 refetch(不闪烁)
+ *   1. 服务端 page.tsx 把 keyword.keyword 传进来(锁定 sourceType=keyword_search + sourceValue)
+ *   2. 客户端 useState 持有 VideoFilters,换页 / 改筛 → fetch('/api/videos?...')
+ *   3. 轮询:当前页含非终态视频时,每 5 秒静默 refetch
  *
- * 列:
- *   1. 封面 40×40 rounded
- *   2. 标题(60 字截断 + hover 完整 + 24h 内 NEW 橙章)
- *   3. 来源(图标 + 手动/博主/关键词/hashtag)
- *   4. 作者
- *   5. 播放量(Numeric + 1.2万格式)
- *   6. 点赞(Numeric)
- *   7. 状态(StatusBadge)
- *   8. 创建时间(相对时间)
- *
- * 行交互:
- *   - 第一列(封面+标题)是 Link,可右键新标签页打开
- *   - 整行 onClick 触发 router.push(详情页),cursor-pointer
+ * 与 creator-videos 唯一区别:不再带 authorId,改用 sourceType + sourceValue。
  */
 
 const POLL_INTERVAL_MS = 5_000;
-const TITLE_MAX = 60;
 const NEW_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h 内算 NEW
 
 type ApiListResponse = {
@@ -72,76 +49,42 @@ type ApiListResponse = {
   error?: string;
 };
 
-interface VideoTableProps {
-  initialVideos: VideoListItem[];
-  initialTotal: number;
+interface KeywordVideosProps {
+  /** 关键词文本(对应 videos.source_value) */
+  keyword: string;
   pageSize?: number;
 }
 
-/** source_type → (图标, 中文标签) */
-const SOURCE_LABELS: Record<SourceType, { label: string; Icon: typeof Link2 }> = {
-  manual_video: { label: "手动", Icon: Link2 },
-  creator_monitor: { label: "博主", Icon: User },
-  keyword_search: { label: "关键词", Icon: Hash },
-  hashtag_search: { label: "hashtag", Icon: Hash },
-};
-
-/** 24h 内创建 → 加 NEW 橙章(走 rust 橙品牌色) */
+/** 24h 内创建 → 加 NEW 橙章 */
 function isNew(createdAt: string, now: number = Date.now()): boolean {
   const t = new Date(createdAt).getTime();
   if (Number.isNaN(t)) return false;
   return now - t < NEW_WINDOW_MS;
 }
 
-export function VideoTable({
-  initialVideos,
-  initialTotal,
-  pageSize = 20,
-}: VideoTableProps) {
+export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  // URL → 初始状态(useSearchParams 在 client mount 后才稳定)
-  const urlPage = Math.max(1, Number(searchParams.get("page")) || 1);
-  const urlStatus = (searchParams.get("status") as AnalysisStatus | null) ?? null;
-  const urlSourceType = (searchParams.get("sourceType") as SourceType | null) ?? "";
-
-  const [videos, setVideos] = React.useState<VideoListItem[]>(initialVideos);
-  const [total, setTotal] = React.useState<number>(initialTotal);
-  const [page, setPage] = React.useState<number>(urlPage);
-  const [filters, setFilters] = React.useState<VideoFilters>({
-    ...DEFAULT_VIDEO_FILTERS,
-    status: urlStatus ?? DEFAULT_VIDEO_FILTERS.status,
-  });
-  const [sourceType, setSourceType] = React.useState<SourceType | "">(urlSourceType);
+  const [videos, setVideos] = React.useState<VideoListItem[]>([]);
+  const [total, setTotal] = React.useState<number>(0);
+  const [page, setPage] = React.useState<number>(1);
+  const [filters, setFilters] =
+    React.useState<VideoFilters>(DEFAULT_VIDEO_FILTERS);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // 同步 URL searchParams(可分享 / 浏览器后退可用)
-  // 透传所有 VideoFilters 非空项 + page + sourceType
-  const syncUrl = React.useCallback(
-    (nextPage: number, nextFilters: VideoFilters, nextSource: SourceType | "") => {
-      const params = videoFiltersToParams(nextFilters);
-      if (nextPage > 1) params.set("page", String(nextPage));
-      if (nextSource) params.set("sourceType", nextSource);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router]
-  );
-
   const fetchPage = React.useCallback(
-    async (targetPage: number, targetFilters: VideoFilters, targetSource: SourceType | "") => {
+    async (targetPage: number, targetFilters: VideoFilters) => {
       setLoading(true);
       setError(null);
       try {
         const params = videoFiltersToParams(targetFilters);
+        params.set("sourceType", "keyword_search");
+        params.set("sourceValue", keyword);
         params.set("page", String(targetPage));
         params.set("pageSize", String(pageSize));
-        if (targetSource) params.set("sourceType", targetSource);
         const res = await fetch(`/api/videos?${params.toString()}`, {
           cache: "no-store",
         });
@@ -158,88 +101,59 @@ export function VideoTable({
         setLoading(false);
       }
     },
-    [pageSize]
+    [keyword, pageSize]
   );
 
-  // 筛选变更 → 回到第 1 页
+  // 首次挂载拉首屏(无 SSR 数据,keyword 详情页不强制 SSR 视频列表)
+  React.useEffect(() => {
+    void fetchPage(1, DEFAULT_VIDEO_FILTERS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyword]);
+
   const handleFiltersChange = React.useCallback(
     (next: VideoFilters) => {
       setFilters(next);
       setPage(1);
-      syncUrl(1, next, sourceType);
-      void fetchPage(1, next, sourceType);
+      void fetchPage(1, next);
     },
-    [fetchPage, sourceType, syncUrl]
-  );
-
-  const handleSourceChange = React.useCallback(
-    (next: SourceType | "") => {
-      setSourceType(next);
-      setPage(1);
-      syncUrl(1, filters, next);
-      void fetchPage(1, filters, next);
-    },
-    [fetchPage, filters, syncUrl]
+    [fetchPage]
   );
 
   const handlePageChange = React.useCallback(
     (next: number) => {
       const safe = Math.max(1, Math.min(totalPages, next));
       setPage(safe);
-      syncUrl(safe, filters, sourceType);
-      void fetchPage(safe, filters, sourceType);
+      void fetchPage(safe, filters);
     },
-    [fetchPage, filters, sourceType, syncUrl, totalPages]
+    [fetchPage, filters, totalPages]
   );
 
-  // 轮询:仅在当前页含非终态视频时启动,降低常态开销
+  // 轮询:仅在当前页含非终态视频时启动
   React.useEffect(() => {
     const hasInFlight = videos.some((v) => !isTerminalStatus(v.analysis_status));
     if (!hasInFlight) return;
     const timer = setInterval(() => {
-      void fetchPage(page, filters, sourceType);
+      void fetchPage(page, filters);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [fetchPage, page, filters, sourceType, videos]);
+  }, [fetchPage, page, filters, videos]);
 
   return (
     <div className="space-y-6">
-      {/* Toolbar:左侧总数,右侧筛选栏(ListFilters + 来源 select) */}
-      <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+      {/* Toolbar */}
+      <div className="flex flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          视频库 ·{" "}
+          关键词采集 ·{" "}
           <span className="font-mono tabular-nums text-zinc-950 dark:text-zinc-50">
             {total.toLocaleString()}
           </span>{" "}
           条
         </p>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <ListFilters
-            value={filters}
-            onChange={handleFiltersChange}
-            disabled={loading}
-          />
-          {/* 来源筛选:全部 + 4 种来源 */}
-          <select
-            value={sourceType}
-            onChange={(e) => handleSourceChange(e.target.value as SourceType | "")}
-            disabled={loading}
-            aria-label="按来源筛选"
-            className={cn(
-              "h-9 rounded-md border border-zinc-200 bg-white px-3 pr-8 text-sm text-zinc-900 transition-colors",
-              "focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
-            )}
-          >
-            <option value="">全部来源</option>
-            {SOURCE_TYPES.map((s) => (
-              <option key={s} value={s}>
-                {SOURCE_LABELS[s].label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <ListFilters
+          value={filters}
+          onChange={handleFiltersChange}
+          disabled={loading}
+        />
       </div>
 
       {/* 错误条 */}
@@ -256,12 +170,8 @@ export function VideoTable({
       {videos.length === 0 && !loading ? (
         <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           <EmptyState
-            title={filters.status === "all" && !sourceType ? "视频库还是空的" : "没有匹配的视频"}
-            description={
-              filters.status === "all" && !sourceType
-                ? "提交一条 TikTok 视频链接开始分析,完成后会出现在这里。"
-                : "试试切换其他筛选条件,或清空筛选查看全部视频。"
-            }
+            title="该关键词还没有采集到视频"
+            description="系统会按监控频率定期搜索该关键词,新视频入库后会自动出现在这里。"
           />
         </div>
       ) : (
@@ -277,7 +187,6 @@ export function VideoTable({
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[64px]">封面</TableHead>
                 <TableHead className="min-w-[260px]">标题</TableHead>
-                <TableHead>来源</TableHead>
                 <TableHead>作者</TableHead>
                 <TableHead className="text-right">播放</TableHead>
                 <TableHead className="text-right">点赞</TableHead>
@@ -287,7 +196,6 @@ export function VideoTable({
             </TableHeader>
             <TableBody>
               {videos.map((v) => {
-                const sourceMeta = SOURCE_LABELS[v.source_type as SourceType];
                 const showNew = isNew(v.created_at);
                 return (
                   <TableRow
@@ -348,16 +256,6 @@ export function VideoTable({
                           </Badge>
                         ) : null}
                       </div>
-                    </TableCell>
-                    <TableCell className="py-3">
-                      {sourceMeta ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
-                          <sourceMeta.Icon className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-500" />
-                          {sourceMeta.label}
-                        </span>
-                      ) : (
-                        <Muted className="text-xs">—</Muted>
-                      )}
                     </TableCell>
                     <TableCell className="py-3 text-sm text-zinc-600 dark:text-zinc-400">
                       {v.author_name ?? "—"}

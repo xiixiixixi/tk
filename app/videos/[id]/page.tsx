@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Divider, H1, Muted } from "@/components/ui/typography";
 import { AnalysisView } from "@/components/videos/analysis-view";
 import { PendingAnalysisPanel } from "@/components/videos/pending-analysis-panel";
+import { VideoMediaPanel } from "@/components/videos/video-media-panel";
 import { getVideoById, getLatestAnalysis } from "@/lib/supabase/queries";
 import { TERMINAL_STATUSES } from "@/types";
 import type { AnalysisResultRow, VideoDetail } from "@/lib/pipeline/types";
@@ -13,7 +14,9 @@ import type { AnalysisResultRow, VideoDetail } from "@/lib/pipeline/types";
  * 视频分析详情页 — Editorial / 杂志风格:
  *
  *   1. 顶部返回链接 + H1(视频标题)
- *   2. 状态分支:
+ *   2. 视频素材区 VideoMediaPanel(始终显示):
+ *      播放器 + 状态 + 原始互动数据 + 旁白 + 基础信息
+ *   3. 状态分支:
  *      - 终态 completed + 有 analysis → 渲染 AnalysisView(8 区块)
  *      - 其他(非终态 / 失败 / 重复)→ 渲染 PendingAnalysisPanel(进度 + 轮询)
  *      - failed / duplicate → 渲染友好提示 + 重试/查看按钮
@@ -68,7 +71,10 @@ export default async function VideoDetailPage({ params }: PageProps) {
 
       <Divider className="mx-auto my-12 max-w-6xl md:my-16" />
 
-      {/* 内容区 */}
+      {/* 视频素材区(始终显示,不依赖 analysis_status) */}
+      <VideoMediaPanel video={video} />
+
+      {/* 内容区:解析结果或等待面板 */}
       {showAnalysis ? (
         <AnalysisView video={video} analysis={analysis!} />
       ) : (

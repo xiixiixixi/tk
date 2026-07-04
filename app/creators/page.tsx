@@ -1,7 +1,7 @@
 import { H1, Lead, Muted } from "@/components/ui/typography";
 import { CreatorsList } from "@/components/creators/creator-card";
-import { listCreators } from "@/lib/supabase/queries";
-import type { CreatorRow } from "@/lib/pipeline/types";
+import { listCreatorsWithStats } from "@/lib/supabase/queries";
+import type { CreatorWithStats } from "@/lib/pipeline/types";
 
 /**
  * 博主监控页 — Editorial / 杂志风 + 服务端数据
@@ -22,9 +22,9 @@ import type { CreatorRow } from "@/lib/pipeline/types";
 export const dynamic = "force-dynamic"; // 每次请求都拉新数据,新增博主立即可见
 
 export default async function CreatorsPage() {
-  let creators: CreatorRow[] = [];
+  let creators: CreatorWithStats[] = [];
   try {
-    creators = await listCreators();
+    creators = await listCreatorsWithStats();
   } catch (err) {
     // 数据查询失败时,仍展示空列表 + EmptyState,避免整个页面崩溃
     console.error("[creators/page] listCreators 失败", err);

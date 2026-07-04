@@ -12,20 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { isValidTikTokUrl } from "@/lib/utils";
 
 /**
  * 设置表单 — 从 server page 接收初始 settings 数据,
- * 负责所有交互(展开 / 触发 / 测试 URL)。
+ * 负责所有交互(展开 / 测试 URL)。
  *
  * 安全:完整 secret key 不在这里出现,只展示 boolean + 末 4 位。
  */
@@ -56,53 +48,31 @@ const SECRETS: ReadonlyArray<{
   { key: "R2_SECRET_ACCESS_KEY", label: "R2 Secret Key", hint: "同 Access Key 对应的密钥" },
 ];
 
-type TriggerAction =
-  | "process"
-  | "refresh-metrics"
-  | "monitor-creators"
-  | "search-keywords";
-
-interface TriggerInfo {
-  action: TriggerAction;
+interface ScheduleInfo {
   label: string;
   description: string;
 }
 
-const TRIGGERS: ReadonlyArray<TriggerInfo> = [
+// 各调度端点用途说明(展示用,均由 Railway cron 自动定时执行)
+const SCHEDULES: ReadonlyArray<ScheduleInfo> = [
   {
-    action: "process",
     label: "推进 Pipeline",
-    description:
-      "立刻调一次 /api/cron/process,把队列里下一个待处理视频向前推一步。链路仍由 HTTP 调用链自动接力。",
+    description: "把队列里待处理视频逐步向前推进,直到分析完成。",
   },
   {
-    action: "refresh-metrics",
     label: "刷新互动数据",
     description:
       "重新抓取所有 completed 视频的播放/点赞/评论数(暂为 stub,Apify refresh 未实现)。",
   },
   {
-    action: "monitor-creators",
     label: "监控博主",
     description: "抓取所有 active 博主的新视频,新视频入 videos 表后会由 Pipeline 自动分析。",
   },
   {
-    action: "search-keywords",
     label: "搜索关键词",
     description: "对每个 active 关键词跑一次 TikTok 搜索,新视频入 videos 表后由 Pipeline 自动分析。",
   },
 ];
-
-interface TriggerResponse {
-  action: TriggerAction;
-  result: {
-    error?: string;
-    processed?: number;
-    reason?: string;
-    triggered?: boolean;
-    message?: string;
-  } | null;
-}
 
 interface PostTaskResponse {
   task_id?: string;
@@ -111,43 +81,11 @@ interface PostTaskResponse {
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [envOpen, setEnvOpen] = React.useState(false);
-  const [pendingTrigger, setPendingTrigger] = React.useState<TriggerInfo | null>(null);
-  const [triggering, setTriggering] = React.useState<TriggerAction | null>(null);
-  const [lastResults, setLastResults] = React.useState<Record<TriggerAction, TriggerResponse | null>>({
-    process: null,
-    "refresh-metrics": null,
-    "monitor-creators": null,
-    "search-keywords": null,
-  });
 
   const [testUrl, setTestUrl] = React.useState("");
   const [testSubmitting, setTestSubmitting] = React.useState(false);
   const [testMessage, setTestMessage] = React.useState<string | null>(null);
   const [testError, setTestError] = React.useState<string | null>(null);
-
-  async function runTrigger(info: TriggerInfo) {
-    setTriggering(info.action);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ triggerCron: info.action }),
-      });
-      const data = (await res.json().catch(() => null)) as TriggerResponse | null;
-      setLastResults((prev) => ({ ...prev, [info.action]: data }));
-    } catch (err) {
-      setLastResults((prev) => ({
-        ...prev,
-        [info.action]: {
-          action: info.action,
-          result: { error: err instanceof Error ? err.message : String(err) },
-        },
-      }));
-    } finally {
-      setTriggering(null);
-      setPendingTrigger(null);
-    }
-  }
 
   async function submitTestUrl(e: React.FormEvent) {
     e.preventDefault();
@@ -258,62 +196,34 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* ============== 3. 手动触发 ============== */}
+      {/* ============== 3. 定时调度(read-only) ============== */}
       <Card>
         <CardHeader className="space-y-1.5">
-          <CardTitle className="text-base">手动触发</CardTitle>
+          <CardTitle className="text-base">定时调度</CardTitle>
           <CardDescription>
-            Vercel Hobby 不支持 Cron,这几个按钮用来手动推进 / 抓取。每个调用都会先弹确认。
+            以下任务已由 Railway 常驻 cron 自动定时执行,无需手动触发。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 pt-0 sm:grid-cols-2">
-          {TRIGGERS.map((t) => {
-            const last = lastResults[t.action];
-            const isPending = triggering === t.action;
-            return (
-              <div
-                key={t.action}
-                className="flex items-start justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{t.label}</div>
-                  <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {t.description}
-                  </div>
-                  {last?.result?.error ? (
-                    <div className="mt-1 text-xs text-red-600 dark:text-red-400">
-                      {last.result.error}
-                    </div>
-                  ) : last?.result?.triggered ? (
-                    <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                      {last.result.message ?? "已触发,后台正在处理"}
-                    </div>
-                  ) : last?.result ? (
-                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      返回: processed={last.result.processed ?? "—"}
-                      {last.result.reason ? `, reason=${last.result.reason}` : ""}
-                    </div>
-                  ) : null}
+          {SCHEDULES.map((s) => (
+            <div
+              key={s.label}
+              className="flex items-start justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{s.label}</div>
+                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  {s.description}
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={triggering !== null}
-                  onClick={() => setPendingTrigger(t)}
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      触发
-                    </>
-                  ) : (
-                    "触发"
-                  )}
-                </Button>
+                <div className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+                  由 Railway 定时任务自动执行
+                </div>
               </div>
-            );
-          })}
+              <Badge variant="outline" className="shrink-0">
+                自动
+              </Badge>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -365,47 +275,6 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           ) : null}
         </CardContent>
       </Card>
-
-      {/* ============== 确认 dialog ============== */}
-      <Dialog
-        open={pendingTrigger !== null}
-        onOpenChange={(open) => {
-          if (!open && triggering === null) setPendingTrigger(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>确认触发「{pendingTrigger?.label}」?</DialogTitle>
-            <DialogDescription>{pendingTrigger?.description}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPendingTrigger(null)}
-              disabled={triggering !== null}
-            >
-              取消
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (pendingTrigger) void runTrigger(pendingTrigger);
-              }}
-              disabled={triggering !== null || pendingTrigger === null}
-            >
-              {triggering ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  触发中
-                </>
-              ) : (
-                "确认触发"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

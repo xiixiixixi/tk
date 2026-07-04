@@ -25,6 +25,13 @@ function parseInt32(value: string | null, fallback: number): number | null {
   return n;
 }
 
+/** 解析可选整数筛选参数(null/空/非数字 → null,不传给 query) */
+function parseIntOrNull(value: string | null): number | null {
+  if (value === null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
 
@@ -58,6 +65,15 @@ export async function GET(req: NextRequest) {
   const sourceType = sourceTypeParam as SourceType | null;
 
   const authorId = params.get("authorId");
+  const sourceValue = params.get("sourceValue");
+  const search = params.get("search");
+
+  // 可选的数值筛选(非空才传)
+  const minPlayCount = parseIntOrNull(params.get("minPlayCount"));
+  const minLikeCount = parseIntOrNull(params.get("minLikeCount"));
+  const minDurationSec = parseIntOrNull(params.get("minDurationSec"));
+  const maxDurationSec = parseIntOrNull(params.get("maxDurationSec"));
+  const publishedAfter = params.get("publishedAfter");
 
   try {
     const result = await listVideos({
@@ -66,6 +82,13 @@ export async function GET(req: NextRequest) {
       status: status ?? undefined,
       sourceType: sourceType ?? undefined,
       authorId: authorId ?? undefined,
+      sourceValue: sourceValue ?? undefined,
+      search: search ?? undefined,
+      minPlayCount: minPlayCount ?? undefined,
+      minLikeCount: minLikeCount ?? undefined,
+      minDurationSec: minDurationSec ?? undefined,
+      maxDurationSec: maxDurationSec ?? undefined,
+      publishedAfter: publishedAfter ?? undefined,
     });
     return NextResponse.json(result, { status: 200 });
   } catch (err) {

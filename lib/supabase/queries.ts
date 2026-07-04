@@ -14,8 +14,12 @@ import type {
   TaskInsert,
   CreatorRow,
   CreatorInsert,
+  CreatorUpdate,
+  CreatorWithStats,
   KeywordRow,
   KeywordInsert,
+  KeywordUpdate,
+  KeywordWithStats,
   PipelineNextRow,
   VideoAssetInsert as _VideoAssetInsert,
 } from "@/lib/pipeline/types";
@@ -38,6 +42,19 @@ export interface ListVideosParams {
   status?: AnalysisStatus;
   sourceType?: SourceType;
   authorId?: string;
+  /** 按来源原值过滤(关键词详情页:source_value = keyword) */
+  sourceValue?: string;
+  /** 标题/作者模糊搜索 */
+  search?: string;
+  /** 通用列表筛选(每个列表页都有,对应采集筛选的同维度) */
+  minPlayCount?: number;
+  minLikeCount?: number;
+  publishedAfter?: string; // ISO,只显示此时间后发布
+  minDurationSec?: number;
+  maxDurationSec?: number;
+  /** 排序字段 */
+  sortBy?: "created_at" | "play_count" | "like_count";
+  sortDir?: "asc" | "desc";
 }
 
 export interface ListVideosResult {
@@ -48,7 +65,22 @@ export interface ListVideosResult {
 }
 
 export async function listVideos(params: ListVideosParams = {}): Promise<ListVideosResult> {
-  const { page = 1, pageSize = PAGE_SIZE_DEFAULT, status, sourceType, authorId } = params;
+  const {
+    page = 1,
+    pageSize = PAGE_SIZE_DEFAULT,
+    status,
+    sourceType,
+    authorId,
+    sourceValue,
+    search,
+    minPlayCount,
+    minLikeCount,
+    publishedAfter,
+    minDurationSec,
+    maxDurationSec,
+    sortBy = "created_at",
+    sortDir = "desc",
+  } = params;
 
   let query = getSupabaseAdmin()
     .from("videos")
@@ -56,11 +88,21 @@ export async function listVideos(params: ListVideosParams = {}): Promise<ListVid
       "id, tiktok_video_id, title, author_id, author_name, cover_url, video_file_url, play_count, like_count, comment_count, analysis_status, source_type, source_value, created_at, updated_at",
       { count: "exact" }
     )
-    .order("created_at", { ascending: false });
+    .order(sortBy, { ascending: sortDir === "asc" });
 
   if (status) query = query.eq("analysis_status", status);
   if (sourceType) query = query.eq("source_type", sourceType);
   if (authorId) query = query.eq("author_id", authorId);
+  if (sourceValue) query = query.eq("source_value", sourceValue);
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(`title.ilike.${term},author_name.ilike.${term}`);
+  }
+  if (minPlayCount != null) query = query.gte("play_count", minPlayCount);
+  if (minLikeCount != null) query = query.gte("like_count", minLikeCount);
+  if (publishedAfter) query = query.gte("publish_time", publishedAfter);
+  if (minDurationSec != null) query = query.gte("duration", minDurationSec);
+  if (maxDurationSec != null) query = query.lte("duration", maxDurationSec);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -228,8 +270,51 @@ export async function listCreators(): Promise<CreatorRow[]> {
   return (data ?? []) as CreatorRow[];
 }
 
+/** 博主列表 + 每个博主按 author_id 实时统计(视频总数 / 已解析数) */
+export async function listCreatorsWithStats(): Promise<CreatorWithStats[]> {
+  const creators = await listCreators();
+  return Promise.all(
+    creators.map(async (c) => {
+      const stats = await getCreatorVideoStats(c.creator_id);
+      return { ...c, ...stats };
+    })
+  );
+}
+
+export async function getCreatorById(id: string): Promise<CreatorRow | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("creators")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as CreatorRow | null;
+}
+
+/** 按 author_id 统计视频总数 + 已解析数(D5:不按 source_type,避免漏关键词入口采到的同作者视频) */
+export async function getCreatorVideoStats(
+  authorId: string | null
+): Promise<{ video_count: number; analyzed_count: number }> {
+  if (!authorId) return { video_count: 0, analyzed_count: 0 };
+  const admin = getSupabaseAdmin();
+  const [{ count: total }, { count: analyzed }] = await Promise.all([
+    admin.from("videos").select("id", { count: "exact", head: true }).eq("author_id", authorId),
+    admin
+      .from("videos")
+      .select("id", { count: "exact", head: true })
+      .eq("author_id", authorId)
+      .eq("analysis_status", "completed"),
+  ]);
+  return { video_count: total ?? 0, analyzed_count: analyzed ?? 0 };
+}
+
 export async function insertCreator(creator: CreatorInsert): Promise<void> {
   const { error } = await getSupabaseAdmin().from("creators").insert(creator);
+  if (error) throw error;
+}
+
+export async function updateCreator(id: string, patch: CreatorUpdate): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("creators").update(patch).eq("id", id);
   if (error) throw error;
 }
 
@@ -247,12 +332,94 @@ export async function listKeywords(): Promise<KeywordRow[]> {
   return (data ?? []) as KeywordRow[];
 }
 
+/** 关键词列表 + 采集统计(按 source_value = keyword 文本) */
+export async function listKeywordsWithStats(): Promise<KeywordWithStats[]> {
+  const keywords = await listKeywords();
+  return Promise.all(
+    keywords.map(async (k) => {
+      const stats = await getKeywordVideoStats(k.keyword);
+      return { ...k, ...stats };
+    })
+  );
+}
+
+export async function getKeywordById(id: string): Promise<KeywordRow | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("keywords")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as KeywordRow | null;
+}
+
+/** 按 source_value(=keyword)统计该关键词采集到的视频数 + 已解析数 */
+export async function getKeywordVideoStats(
+  keyword: string
+): Promise<{ video_count: number; analyzed_count: number }> {
+  const admin = getSupabaseAdmin();
+  const [{ count: total }, { count: analyzed }] = await Promise.all([
+    admin
+      .from("videos")
+      .select("id", { count: "exact", head: true })
+      .eq("source_type", "keyword_search")
+      .eq("source_value", keyword),
+    admin
+      .from("videos")
+      .select("id", { count: "exact", head: true })
+      .eq("source_type", "keyword_search")
+      .eq("source_value", keyword)
+      .eq("analysis_status", "completed"),
+  ]);
+  return { video_count: total ?? 0, analyzed_count: analyzed ?? 0 };
+}
+
 export async function insertKeyword(keyword: KeywordInsert): Promise<void> {
   const { error } = await getSupabaseAdmin().from("keywords").insert(keyword);
+  if (error) throw error;
+}
+
+export async function updateKeyword(id: string, patch: KeywordUpdate): Promise<void> {
+  const { error } = await getSupabaseAdmin().from("keywords").update(patch).eq("id", id);
   if (error) throw error;
 }
 
 export async function deleteKeyword(id: string): Promise<void> {
   const { error } = await getSupabaseAdmin().from("keywords").delete().eq("id", id);
   if (error) throw error;
+}
+
+// ============================================================
+// 首页汇总仪表盘统计
+// ============================================================
+
+export interface DashboardStats {
+  creator_count: number;
+  keyword_count: number;
+  video_total: number;
+  new_today: number; // 24h 内入库
+  pending_analysis: number; // 非终态(处理中)
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const admin = getSupabaseAdmin();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const terminal = ["completed", "failed", "duplicate"];
+  const [creators, keywords, videoTotal, newToday, pending] = await Promise.all([
+    admin.from("creators").select("id", { count: "exact", head: true }),
+    admin.from("keywords").select("id", { count: "exact", head: true }),
+    admin.from("videos").select("id", { count: "exact", head: true }),
+    admin.from("videos").select("id", { count: "exact", head: true }).gte("created_at", since),
+    admin
+      .from("videos")
+      .select("id", { count: "exact", head: true })
+      .not("analysis_status", "in", `(${terminal.join(",")})`),
+  ]);
+  return {
+    creator_count: creators.count ?? 0,
+    keyword_count: keywords.count ?? 0,
+    video_total: videoTotal.count ?? 0,
+    new_today: newToday.count ?? 0,
+    pending_analysis: pending.count ?? 0,
+  };
 }
