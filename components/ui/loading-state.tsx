@@ -41,11 +41,11 @@ export function LoadingState({
       )}
     >
       {variant === "spinner" ? (
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-500 dark:text-zinc-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-500 dark:text-neutral-400" />
       ) : (
         <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: count }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full " />
           ))}
         </div>
       )}

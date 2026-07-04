@@ -109,10 +109,10 @@ export function SubmitForm() {
     <div className="grid gap-10 md:grid-cols-3 md:gap-12">
       {/* 左 1/3 — 文案 */}
       <div className="md:col-span-1">
-        <h2 className="font-serif text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl dark:text-zinc-50">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight text-neutral-900 md:text-3xl dark:text-neutral-50">
           开始一次分析
         </h2>
-        <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className="mt-3 text-base leading-relaxed text-neutral-600 dark:text-neutral-400">
           粘贴一条 TikTok 视频,或锁定一位博主 / 一个关键词,系统会自动抓取内容、提取字幕、并用 Gemini 拆解出可复刻的脚本结构。
         </p>
       </div>
@@ -179,7 +179,7 @@ export function SubmitForm() {
         {error ? (
           <div
             role="alert"
-            className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 transition-opacity dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+            className="mt-4  border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 transition-opacity dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
           >
             {error}
           </div>

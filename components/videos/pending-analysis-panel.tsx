@@ -107,13 +107,13 @@ export function PendingAnalysisPanel({
   if (status === "failed") {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center  bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400">
           <AlertCircle className="h-6 w-6" />
         </div>
         <Muted className="font-mono uppercase tracking-[0.18em]">
           Failed · 分析失败
         </Muted>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
           这条视频没能完成分析
         </h2>
         <P className="mx-auto mt-3 max-w-md text-sm leading-relaxed">
@@ -136,13 +136,13 @@ export function PendingAnalysisPanel({
   if (status === "duplicate") {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center  bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
           <Copy className="h-6 w-6" />
         </div>
         <Muted className="font-mono uppercase tracking-[0.18em]">
           Duplicate · 重复视频
         </Muted>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
           这条视频之前已经分析过了
         </h2>
         <P className="mx-auto mt-3 max-w-md text-sm leading-relaxed">
@@ -167,7 +167,7 @@ export function PendingAnalysisPanel({
     <>
       {/* 头部:大封面 + 当前状态 */}
       <section className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 md:grid-cols-[160px_1fr]">
-        <div className="relative aspect-[160/284] w-[160px] overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="relative aspect-[160/284] w-[160px] overflow-hidden  border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
           {video.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -176,7 +176,7 @@ export function PendingAnalysisPanel({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-zinc-400">
+            <div className="flex h-full w-full items-center justify-center text-neutral-400">
               <Play className="h-8 w-8" />
             </div>
           )}
@@ -190,25 +190,25 @@ export function PendingAnalysisPanel({
             </Muted>
           </div>
 
-          <h2 className="text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl dark:text-zinc-50">
+          <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 md:text-3xl dark:text-neutral-50">
             {video.title ?? "未命名视频"}
           </h2>
 
           <Lead className="max-w-2xl">
             {STATUS_LABELS[status] || "正在准备…"}
-            <span className="ml-2 inline-block animate-pulse text-zinc-400">●</span>
+            <span className="ml-2 inline-block animate-pulse text-neutral-400">●</span>
           </Lead>
 
           {pollError ? (
             <div
               role="alert"
-              className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400"
+              className=" border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400"
             >
               {pollError} · 自动重试中
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-500">
             <Loader2 className="h-3 w-3 animate-spin" />
             每 3 秒自动刷新 · 后台自动处理中
           </div>
@@ -219,7 +219,7 @@ export function PendingAnalysisPanel({
                 href={video.original_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-700 underline-offset-4 hover:text-zinc-950 hover:underline dark:text-zinc-300 dark:hover:text-zinc-50"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline-offset-4 hover:text-neutral-900 hover:underline dark:text-neutral-300 dark:hover:text-neutral-50"
               >
                 查看 TikTok 原文
                 <ExternalLink className="h-3.5 w-3.5" />

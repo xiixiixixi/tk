@@ -98,7 +98,7 @@ export function ListFilters({
           <option value="author">按作者</option>
         </select>
         <div className="relative flex-1">
-          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             value={value.search}

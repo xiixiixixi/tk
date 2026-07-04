@@ -33,17 +33,17 @@ export function EmptyState({
     >
       <div
         aria-hidden
-        className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400"
+        className="mb-8 flex h-16 w-16 items-center justify-center  bg-neutral-100 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400"
       >
         {icon ?? <Search className="h-8 w-8" />}
       </div>
 
-      <h2 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
         {title}
       </h2>
 
       {description ? (
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-3 max-w-sm text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
           {description}
         </p>
       ) : null}

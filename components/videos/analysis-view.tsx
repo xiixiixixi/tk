@@ -121,7 +121,7 @@ function SectionHeading({
   return (
     <header className="mb-8 flex items-end justify-between gap-4">
       <div className="flex items-end gap-5">
-        <Numeric className="text-4xl font-semibold text-zinc-300 dark:text-zinc-700 md:text-5xl">
+        <Numeric className="text-4xl font-semibold text-neutral-300 dark:text-neutral-700 md:text-5xl">
           {index}
         </Numeric>
         <div className="space-y-1">
@@ -170,7 +170,7 @@ function Section01Header({
   return (
     <RevealSection index={0} className="grid grid-cols-1 gap-8 md:grid-cols-[160px_1fr] md:gap-10">
       {/* 封面 160 × 284 */}
-      <div className="relative aspect-[160/284] w-[160px] overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative aspect-[160/284] w-[160px] overflow-hidden  border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
         {video.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -179,7 +179,7 @@ function Section01Header({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+          <div className="flex h-full w-full items-center justify-center text-neutral-400">
             <Film className="h-8 w-8" />
           </div>
         )}
@@ -189,41 +189,41 @@ function Section01Header({
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           {analysis.id ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5  border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-400">
               <Sparkles className="h-3 w-3" />
               分析完成
             </span>
           ) : null}
           {video.duration ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
+            <span className="inline-flex items-center gap-1.5  border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
               <Clock className="h-3 w-3" />
               {formatDuration(video.duration)}
             </span>
           ) : null}
           {video.source_type ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
+            <span className="inline-flex items-center gap-1.5  border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
               {video.source_type}
             </span>
           ) : null}
         </div>
 
         {/* 标题 */}
-        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-zinc-950 md:text-4xl dark:text-zinc-50">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-neutral-900 md:text-4xl dark:text-neutral-50">
           {video.title ?? "未命名视频"}
         </h1>
 
         {/* 作者 */}
         {video.author_name ? (
-          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="inline-flex h-7 w-7 items-center justify-center  bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
               <User className="h-3.5 w-3.5" />
             </span>
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+            <span className="font-medium text-neutral-800 dark:text-neutral-200">
               {video.author_name}
             </span>
             {video.publish_time ? (
               <>
-                <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                <span className="text-neutral-300 dark:text-neutral-700">·</span>
                 <span>{formatRelative(video.publish_time)}</span>
               </>
             ) : null}
@@ -231,7 +231,7 @@ function Section01Header({
         ) : null}
 
         {/* 4 个 numeric(inline grid) */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-zinc-200 pt-5 sm:grid-cols-4 dark:border-zinc-800">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-neutral-200 pt-5 sm:grid-cols-4 dark:border-neutral-800">
           <MetricCell icon={Play} label="播放" value={formatCount(video.play_count)} />
           <MetricCell icon={Heart} label="点赞" value={formatCount(video.like_count)} />
           <MetricCell icon={MessageCircle} label="评论" value={formatCount(video.comment_count)} />
@@ -245,7 +245,7 @@ function Section01Header({
               href={video.video_file_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-700 underline-offset-4 hover:text-zinc-950 hover:underline dark:text-zinc-300 dark:hover:text-zinc-50"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 underline-offset-4 hover:text-neutral-900 hover:underline dark:text-neutral-300 dark:hover:text-neutral-50"
             >
               打开视频文件
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -268,7 +268,7 @@ function MetricCell({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
+      <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-500">
         <Icon className="h-3 w-3" />
         {label}
       </div>
@@ -286,22 +286,22 @@ function Section02Overview({ analysis }: { analysis: ParsedAnalysis }) {
     <RevealSection index={1}>
       <SectionHeading index="02" label="Overview · 基础判断" title="这条视频讲的是什么" />
 
-      <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white pl-6 pr-6 py-6 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="relative overflow-hidden  border border-neutral-200 bg-white pl-6 pr-6 py-6 dark:border-neutral-800 dark:bg-neutral-950">
         {/* rust 橙左侧条 accent bar */}
         <div
           aria-hidden
-          className="absolute inset-y-0 left-0 w-1.5 bg-[#C04A1A] dark:bg-[#E8855A]"
+          className="absolute inset-y-0 left-0 w-1.5 bg-[hsl(var(--color-ikb))] dark:bg-[#E8855A]"
         />
 
         <dl className="space-y-6">
           {/* video_type chip */}
           {analysis.video_type ? (
             <div className="flex flex-wrap items-baseline gap-3">
-              <dt className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <dt className="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 类型
               </dt>
               <dd>
-                <span className="inline-flex items-center rounded-md border border-[#C04A1A]/20 bg-[#C04A1A]/10 px-3 py-1 text-sm font-semibold text-[#C04A1A] dark:border-[#C04A1A]/40 dark:bg-[#C04A1A]/20 dark:text-[#E8855A]">
+                <span className="inline-flex items-center  border border-[hsl(var(--color-ikb))]/20 bg-[hsl(var(--color-ikb))]/10 px-3 py-1 text-sm font-semibold text-[hsl(var(--color-ikb))] dark:border-[hsl(var(--color-ikb))]/40 dark:bg-[hsl(var(--color-ikb))]/20 dark:text-[#E8855A]">
                   {analysis.video_type}
                 </span>
               </dd>
@@ -311,11 +311,11 @@ function Section02Overview({ analysis }: { analysis: ParsedAnalysis }) {
           {/* target_audience */}
           {analysis.target_audience ? (
             <div className="space-y-1.5">
-              <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 <Target className="h-3 w-3" />
                 目标用户
               </dt>
-              <dd className="text-base text-zinc-800 dark:text-zinc-200">
+              <dd className="text-base text-neutral-800 dark:text-neutral-200">
                 {analysis.target_audience}
               </dd>
             </div>
@@ -324,11 +324,11 @@ function Section02Overview({ analysis }: { analysis: ParsedAnalysis }) {
           {/* video_summary */}
           {analysis.video_summary ? (
             <div className="space-y-1.5">
-              <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 <Lightbulb className="h-3 w-3" />
                 内容概述
               </dt>
-              <dd className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+              <dd className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
                 {analysis.video_summary}
               </dd>
             </div>
@@ -352,7 +352,7 @@ function Section03Hook({ analysis }: { analysis: ParsedAnalysis }) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         {/* 引用块 original */}
-        <div className="relative rounded-lg border border-amber-200 bg-amber-50/60 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
+        <div className="relative  border border-amber-200 bg-amber-50/60 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
           <Quote
             aria-hidden
             className="absolute right-4 top-4 h-10 w-10 text-amber-200/70 dark:text-amber-900/40"
@@ -360,12 +360,12 @@ function Section03Hook({ analysis }: { analysis: ParsedAnalysis }) {
           <Muted className="font-mono uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
             Original · 原文
           </Muted>
-          <p className="mt-3 text-xl font-medium leading-snug text-zinc-900 md:text-2xl dark:text-zinc-50">
+          <p className="mt-3 text-xl font-medium leading-snug text-neutral-900 md:text-2xl dark:text-neutral-50">
             {hook.original || "—"}
           </p>
           {hook.type ? (
             <div className="mt-5">
-              <span className="inline-flex items-center rounded-md border border-amber-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+              <span className="inline-flex items-center  border border-amber-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                 {hook.type}
               </span>
             </div>
@@ -376,7 +376,7 @@ function Section03Hook({ analysis }: { analysis: ParsedAnalysis }) {
         <div className="space-y-5">
           {hook.why_it_works ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 <Zap className="h-3 w-3" />
                 为什么有效
               </div>
@@ -385,7 +385,7 @@ function Section03Hook({ analysis }: { analysis: ParsedAnalysis }) {
           ) : null}
           {hook.replicable_template ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 <Wand className="h-3 w-3" />
                 可复用模板
               </div>
@@ -403,7 +403,7 @@ function Section03Hook({ analysis }: { analysis: ParsedAnalysis }) {
 // ============================================================
 
 const SEGMENT_ACCENTS = [
-  "before:bg-zinc-900",
+  "before:bg-neutral-900",
   "before:bg-indigo-700",
   "before:bg-amber-600",
   "before:bg-emerald-700",
@@ -422,14 +422,14 @@ function Section04Storyboard({ analysis }: { analysis: ParsedAnalysis }) {
         label="Storyboard · 分镜"
         title="按时间轴拆解画面"
         meta={
-          <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
+          <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-500">
             <Layers className="h-3 w-3" />
             共 <Numeric className="text-xs">{segments.length}</Numeric> 段
           </span>
         }
       />
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="overflow-hidden  border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -449,26 +449,26 @@ function Section04Storyboard({ analysis }: { analysis: ParsedAnalysis }) {
                   SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length],
                 )}
               >
-                <TableCell className="align-top font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                <TableCell className="align-top font-mono text-xs text-neutral-700 dark:text-neutral-300">
                   {seg.segment}
                 </TableCell>
                 <TableCell className="align-top">
-                  <span className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+                  <span className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
                     {seg.visual}
                   </span>
                 </TableCell>
                 <TableCell className="align-top">
-                  <span className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                  <span className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
                     {seg.audio}
                   </span>
                 </TableCell>
                 <TableCell className="align-top">
-                  <span className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                  <span className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
                     {seg.text}
                   </span>
                 </TableCell>
                 <TableCell className="align-top">
-                  <span className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  <span className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                     {seg.purpose}
                   </span>
                 </TableCell>
@@ -515,20 +515,20 @@ function Section05Subtitle({ analysis }: { analysis: ParsedAnalysis }) {
           return (
             <div
               key={key}
-              className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950"
+              className=" border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950"
             >
               <div className="flex items-center justify-between">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                <span className="inline-flex h-7 w-7 items-center justify-center  bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 <Muted className="font-mono uppercase tracking-[0.18em] text-[10px]">
                   {caption}
                 </Muted>
               </div>
-              <div className="mt-3 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <div className="mt-3 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 {label}
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+              <p className="mt-2 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
                 {value}
               </p>
             </div>
@@ -563,20 +563,20 @@ function Section06Visual({ analysis }: { analysis: ParsedAnalysis }) {
     <RevealSection index={5}>
       <SectionHeading index="06" label="Visual · 画面" title="六个画面维度的拆解" />
 
-      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-800">
+      <div className="grid grid-cols-1 gap-px overflow-hidden  border border-neutral-200 bg-neutral-200 sm:grid-cols-2 lg:grid-cols-3 dark:border-neutral-800 dark:bg-neutral-800">
         {VISUAL_FIELDS.map(({ key, label, icon: Icon }) => {
           const value = visual[key];
           if (!value) return null;
           return (
             <div
               key={key}
-              className="flex flex-col gap-2 bg-white p-5 dark:bg-zinc-950"
+              className="flex flex-col gap-2 bg-white p-5 dark:bg-neutral-950"
             >
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                 <Icon className="h-3.5 w-3.5" />
                 {label}
               </div>
-              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+              <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
                 {value}
               </p>
             </div>
@@ -619,29 +619,29 @@ function ListCard({
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   items: string[];
-  accent: "rose" | "zinc";
+  accent: "rose" | "neutral";
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className=" border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
           <Icon className="h-3.5 w-3.5" />
           {label}
         </div>
-        <Numeric className="text-xs text-zinc-400 dark:text-zinc-600">
+        <Numeric className="text-xs text-neutral-400 dark:text-neutral-600">
           {String(items.length).padStart(2, "0")}
         </Numeric>
       </div>
       <ul className="mt-3 space-y-2">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+          <li key={i} className="flex gap-2 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
             <span
               aria-hidden
               className={cn(
-                "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                "mt-1.5 h-1.5 w-1.5 shrink-0 ",
                 accent === "rose"
                   ? "bg-rose-600 dark:bg-rose-400"
-                  : "bg-zinc-400 dark:bg-zinc-600",
+                  : "bg-neutral-400 dark:bg-neutral-600",
               )}
             />
             <span>{it}</span>
@@ -662,7 +662,7 @@ function Section07Viral({ analysis }: { analysis: ParsedAnalysis }) {
         label="Viral · 爆点"
         title="情绪触发 vs 分享动力"
         meta={
-          <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
+          <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-500">
             <Flame className="h-3 w-3" />
             5 大爆点维度
           </span>
@@ -704,7 +704,7 @@ function Section07Viral({ analysis }: { analysis: ParsedAnalysis }) {
                 label={label}
                 icon={icon}
                 items={items}
-                accent="zinc"
+                accent="neutral"
               />
             );
           })}
@@ -742,7 +742,7 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
       />
 
       <Tabs defaultValue="title_template" className="w-full">
-        <TabsList className="h-auto w-full justify-start gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900/40">
+        <TabsList className="h-auto w-full justify-start gap-1  border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-900/40">
           {TABS.map(({ key, label, icon: Icon }) => (
             <TabsTrigger
               key={key}
@@ -757,11 +757,11 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
 
         {/* 标题模板 */}
         <TabsContent value="title_template" className="mt-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className=" border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
             <Muted className="font-mono uppercase tracking-[0.18em]">
               Title Template · 标题公式
             </Muted>
-            <p className="mt-3 text-base leading-relaxed text-zinc-900 md:text-lg dark:text-zinc-50">
+            <p className="mt-3 text-base leading-relaxed text-neutral-900 md:text-lg dark:text-neutral-50">
               {rep.title_template || "—"}
             </p>
           </div>
@@ -769,11 +769,11 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
 
         {/* 开头 */}
         <TabsContent value="opening" className="mt-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className=" border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
             <Muted className="font-mono uppercase tracking-[0.18em]">
               Opening · 开头钩子
             </Muted>
-            <p className="mt-3 text-base leading-relaxed text-zinc-900 md:text-lg dark:text-zinc-50">
+            <p className="mt-3 text-base leading-relaxed text-neutral-900 md:text-lg dark:text-neutral-50">
               {rep.opening || "—"}
             </p>
           </div>
@@ -781,11 +781,11 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
 
         {/* 中段 */}
         <TabsContent value="middle" className="mt-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className=" border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
             <Muted className="font-mono uppercase tracking-[0.18em]">
               Middle · 中段结构
             </Muted>
-            <p className="mt-3 text-base leading-relaxed text-zinc-900 md:text-lg dark:text-zinc-50">
+            <p className="mt-3 text-base leading-relaxed text-neutral-900 md:text-lg dark:text-neutral-50">
               {rep.middle || "—"}
             </p>
           </div>
@@ -793,11 +793,11 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
 
         {/* 结尾 */}
         <TabsContent value="ending" className="mt-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className=" border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
             <Muted className="font-mono uppercase tracking-[0.18em]">
               Ending · 结尾转化
             </Muted>
-            <p className="mt-3 text-base leading-relaxed text-zinc-900 md:text-lg dark:text-zinc-50">
+            <p className="mt-3 text-base leading-relaxed text-neutral-900 md:text-lg dark:text-neutral-50">
               {rep.ending || "—"}
             </p>
           </div>
@@ -805,7 +805,7 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
 
         {/* 拍摄建议 */}
         <TabsContent value="shooting_tips" className="mt-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className=" border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
             <Muted className="font-mono uppercase tracking-[0.18em]">
               Shooting Tips · 拍摄清单
             </Muted>
@@ -813,16 +813,16 @@ function Section08Replicable({ analysis }: { analysis: ParsedAnalysis }) {
               {(rep.shooting_tips ?? []).map((tip, i) => (
                 <li
                   key={i}
-                  className="flex gap-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+                  className="flex gap-3 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200"
                 >
-                  <Numeric className="mt-0.5 shrink-0 text-xs text-zinc-400 dark:text-zinc-600">
+                  <Numeric className="mt-0.5 shrink-0 text-xs text-neutral-400 dark:text-neutral-600">
                     {String(i + 1).padStart(2, "0")}
                   </Numeric>
                   <span>{tip}</span>
                 </li>
               ))}
               {rep.shooting_tips?.length === 0 ? (
-                <li className="text-sm text-zinc-500">暂无</li>
+                <li className="text-sm text-neutral-500">暂无</li>
               ) : null}
             </ul>
           </div>

@@ -96,20 +96,20 @@ export function TaskList() {
   return (
     <section className="space-y-5">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-serif text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl dark:text-zinc-50">
+        <h2 className="font-serif text-xl font-semibold tracking-tight text-neutral-900 md:text-2xl dark:text-neutral-50">
           最近的任务
         </h2>
         <Link
           href="/videos"
-          className="text-sm text-[#C04A1A] underline-offset-4 hover:underline"
+          className="text-sm text-[hsl(var(--color-ikb))] underline-offset-4 hover:underline"
         >
           查看全部 →
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="overflow-hidden  border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
         {loading ? (
-          <div className="flex items-center justify-center px-6 py-12 text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center justify-center px-6 py-12 text-sm text-neutral-500 dark:text-neutral-400">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             加载中…
           </div>
@@ -118,11 +118,11 @@ export function TaskList() {
             {loadError}
           </div>
         ) : tasks.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="px-6 py-12 text-center text-sm text-neutral-500 dark:text-neutral-400">
             暂无任务,提交一个分析试试
           </div>
         ) : (
-          <ul role="list" className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <ul role="list" className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {tasks.map((task) => {
               // JOIN 拿第一个 video(99% 情况就一个;数组是 supabase-js FK JOIN 的返回格式)
               const video = task.videos?.[0];
@@ -134,7 +134,7 @@ export function TaskList() {
                   <button
                     type="button"
                     onClick={() => router.push(detailHref)}
-                    className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-zinc-50 focus-visible:bg-zinc-50 focus-visible:outline-none dark:hover:bg-zinc-900/60 dark:focus-visible:bg-zinc-900/60"
+                    className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-neutral-50 focus-visible:bg-neutral-50 focus-visible:outline-none dark:hover:bg-neutral-900/60 dark:focus-visible:bg-neutral-900/60"
                   >
                     <Badge
                       variant={TASK_TYPE_VARIANT[task.task_type] ?? "outline"}
@@ -142,11 +142,11 @@ export function TaskList() {
                     >
                       {TASK_TYPE_LABEL[task.task_type] ?? task.task_type}
                     </Badge>
-                    <span className="min-w-0 flex-1 truncate text-sm text-zinc-700 dark:text-zinc-300">
+                    <span className="min-w-0 flex-1 truncate text-sm text-neutral-700 dark:text-neutral-300">
                       {truncate(video?.title ?? task.input_value)}
                     </span>
                     <StatusBadge status={realStatus} />
-                    <span className="hidden shrink-0 font-mono text-xs tabular-nums text-zinc-500 sm:inline dark:text-zinc-400">
+                    <span className="hidden shrink-0 font-mono text-xs tabular-nums text-neutral-500 sm:inline dark:text-neutral-400">
                       {formatDateTime(task.created_at)}
                     </span>
                   </button>

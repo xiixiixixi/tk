@@ -142,9 +142,9 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
     <div className="space-y-6">
       {/* Toolbar */}
       <div className="flex flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
           关键词采集 ·{" "}
-          <span className="font-mono tabular-nums text-zinc-950 dark:text-zinc-50">
+          <span className="font-mono tabular-nums text-neutral-900 dark:text-neutral-50">
             {total.toLocaleString()}
           </span>{" "}
           条
@@ -160,7 +160,7 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
       {error ? (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+          className=" border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
         >
           {error}
         </div>
@@ -168,16 +168,16 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
 
       {/* 表格 / 空态 */}
       {videos.length === 0 && !loading ? (
-        <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className=" border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <EmptyState
             title="该关键词还没有采集到视频"
             description="系统会按监控频率定期搜索该关键词,新视频入库后会自动出现在这里。"
           />
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="relative overflow-hidden  border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           {loading ? (
-            <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md bg-white/80 px-2.5 py-1 text-xs text-zinc-500 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-400">
+            <div className="absolute right-4 top-4 z-10 flex items-center gap-2  bg-white/80 px-2.5 py-1 text-xs text-neutral-500 backdrop-blur dark:bg-neutral-950/80 dark:text-neutral-400">
               <Loader2 className="h-3 w-3 animate-spin" />
               加载中
             </div>
@@ -200,7 +200,7 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                 return (
                   <TableRow
                     key={v.id}
-                    className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+                    className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
                     onClick={(e) => {
                       // 避免点 Link 时重复触发
                       const target = e.target as HTMLElement;
@@ -211,7 +211,7 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                     <TableCell className="py-3">
                       <Link
                         href={`/videos/${v.id}`}
-                        className="block h-10 w-10 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900"
+                        className="block h-10 w-10 overflow-hidden  bg-neutral-100 dark:bg-neutral-900"
                         aria-label={v.title ?? "查看视频详情"}
                       >
                         {v.cover_url ? (
@@ -222,7 +222,7 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] text-zinc-400">
+                          <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">
                             暂无
                           </span>
                         )}
@@ -234,9 +234,9 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                           href={`/videos/${v.id}`}
                           title={v.title ?? ""}
                           className={cn(
-                            "block truncate text-sm font-medium text-zinc-900",
-                            "hover:text-zinc-950 hover:underline underline-offset-2",
-                            "dark:text-zinc-50 dark:hover:text-white"
+                            "block truncate text-sm font-medium text-neutral-900",
+                            "hover:text-neutral-900 hover:underline underline-offset-2",
+                            "dark:text-neutral-50 dark:hover:text-white"
                           )}
                         >
                           {truncate(v.title)}
@@ -245,9 +245,9 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "shrink-0 gap-1 border-[#C04A1A]/30 bg-[#C04A1A]/10 px-1.5 py-0",
-                              "text-[10px] font-semibold uppercase tracking-wide text-[#C04A1A]",
-                              "dark:border-[#C04A1A]/40 dark:bg-[#C04A1A]/20 dark:text-[#E8855A]"
+                              "shrink-0 gap-1 border-[hsl(var(--color-ikb))]/30 bg-[hsl(var(--color-ikb))]/10 px-1.5 py-0",
+                              "text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--color-ikb))]",
+                              "dark:border-[hsl(var(--color-ikb))]/40 dark:bg-[hsl(var(--color-ikb))]/20 dark:text-[#E8855A]"
                             )}
                             aria-label="24 小时内新采集"
                           >
@@ -257,7 +257,7 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 text-sm text-zinc-600 dark:text-zinc-400">
+                    <TableCell className="py-3 text-sm text-neutral-600 dark:text-neutral-400">
                       {v.author_name ?? "—"}
                     </TableCell>
                     <TableCell className="py-3 text-right">
@@ -301,9 +301,9 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1 || loading}
               className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 transition-colors",
-                "hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50",
-                "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                "inline-flex h-9 items-center gap-1  border border-neutral-200 bg-white px-3 text-sm text-neutral-700 transition-colors",
+                "hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50",
+                "dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900"
               )}
               aria-label="上一页"
             >
@@ -315,9 +315,9 @@ export function KeywordVideos({ keyword, pageSize = 20 }: KeywordVideosProps) {
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages || loading}
               className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 transition-colors",
-                "hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50",
-                "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                "inline-flex h-9 items-center gap-1  border border-neutral-200 bg-white px-3 text-sm text-neutral-700 transition-colors",
+                "hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50",
+                "dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900"
               )}
               aria-label="下一页"
             >

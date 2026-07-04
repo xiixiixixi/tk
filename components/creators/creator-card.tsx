@@ -39,7 +39,7 @@ import { formatRelative } from "@/lib/utils";
 
 // ============================================================
 // CreatorCard — 单卡片
-//   左:Avatar 占位(zinc-200 圆 + User icon)
+//   左:Avatar 占位(neutral-200 圆 + User icon)
 //   中-上:@creator_name + category
 //   中-下:4 项统计(已采集 / 已解析 / 最近采集 / 上次新增)
 //   右-上:状态 badge(运行中 / 已暂停)
@@ -88,19 +88,19 @@ export function CreatorCard({
   );
 
   return (
-    <Card className="relative flex flex-col gap-5 p-5 transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
+    <Card className="relative flex flex-col gap-5 p-5 transition-colors hover:border-neutral-300 dark:hover:border-neutral-700">
       {/* 整卡点击区 — stretched link 覆盖除按钮以外的区域 */}
       <Link
         href={`/creators/${creator.id}`}
         aria-label={`查看 ${creator.creator_name ?? creator.creator_url} 详情`}
-        className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300"
+        className="absolute inset-0  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
       />
 
       {/* 上:avatar + 名字 + 分类 + 状态 badge */}
       <div className="relative pointer-events-none flex items-start gap-4">
         <div
           aria-hidden
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+          className="flex h-12 w-12 shrink-0 items-center justify-center  bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
         >
           <User className="h-6 w-6" />
         </div>
@@ -118,7 +118,7 @@ export function CreatorCard({
       </div>
 
       {/* 中:统计区 — 2×2 grid(divider 之上) */}
-      <div className="relative pointer-events-none grid grid-cols-2 gap-x-5 gap-y-2 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800">
+      <div className="relative pointer-events-none grid grid-cols-2 gap-x-5 gap-y-2 border-t border-neutral-100 pt-4 text-xs dark:border-neutral-800">
         <Stat label="已采集" value={`${creator.video_count} 条`} />
         <Stat label="已解析" value={`${creator.analyzed_count} 条`} />
         <Stat label="最近采集" value={formatRelative(creator.last_fetch_time)} />
@@ -152,7 +152,7 @@ export function CreatorCard({
           size="sm"
           onClick={handleDelete}
           disabled={deleting || toggling}
-          className="text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+          className="text-neutral-500 hover:text-red-600 dark:hover:text-red-400"
           aria-label={`删除 ${creator.creator_name ?? creator.creator_url}`}
         >
           {deleting ? (
@@ -172,7 +172,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
       <Muted className="text-xs">{label}</Muted>
-      <span className="font-mono text-xs tabular-nums text-zinc-900 dark:text-zinc-100">
+      <span className="font-mono text-xs tabular-nums text-neutral-900 dark:text-neutral-100">
         {value}
       </span>
     </div>
@@ -309,7 +309,7 @@ export function CreatorsList({ initialCreators }: CreatorsListProps) {
             value={filter}
             onChange={(e) => setFilter(e.target.value as StatusFilter)}
             aria-label="按状态筛选"
-            className="h-9 rounded-md border border-zinc-200 bg-white px-3 pr-8 text-sm text-zinc-900 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
+            className="h-9  border border-neutral-200 bg-white px-3 pr-8 text-sm text-neutral-900 transition-colors focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-600 dark:focus:ring-neutral-800"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>

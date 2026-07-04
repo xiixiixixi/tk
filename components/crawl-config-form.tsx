@@ -64,14 +64,14 @@ export function CrawlConfigForm({ scope }: { scope: "creator" | "keyword" }) {
   }
 
   if (loading) {
-    return <div className="py-8 text-center text-sm text-zinc-500">加载配置中…</div>;
+    return <div className="py-8 text-center text-sm text-neutral-500">加载配置中…</div>;
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Settings2 className="h-4 w-4 text-[#C04A1A]" />
+          <Settings2 className="h-4 w-4 text-[hsl(var(--color-ikb))]" />
           全局采集配置
         </CardTitle>
         <CardDescription>
@@ -81,7 +81,7 @@ export function CrawlConfigForm({ scope }: { scope: "creator" | "keyword" }) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">视频时间范围</span>
+            <span className="text-xs text-neutral-500">视频时间范围</span>
             <select
               value={config.max_age_months}
               onChange={e => update("max_age_months", Number(e.target.value))}
@@ -97,32 +97,32 @@ export function CrawlConfigForm({ scope }: { scope: "creator" | "keyword" }) {
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">时长上限(秒)</span>
+            <span className="text-xs text-neutral-500">时长上限(秒)</span>
             <Input type="number" value={config.max_duration_sec} onChange={e => update("max_duration_sec", Number(e.target.value))} className="h-9" />
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">最低播放</span>
+            <span className="text-xs text-neutral-500">最低播放</span>
             <Input type="number" value={config.min_play_count} onChange={e => update("min_play_count", Number(e.target.value))} className="h-9" />
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">最低点赞</span>
+            <span className="text-xs text-neutral-500">最低点赞</span>
             <Input type="number" value={config.min_like_count} onChange={e => update("min_like_count", Number(e.target.value))} className="h-9" />
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">最低评论</span>
+            <span className="text-xs text-neutral-500">最低评论</span>
             <Input type="number" value={config.min_comment_count} onChange={e => update("min_comment_count", Number(e.target.value))} className="h-9" />
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">最低分享</span>
+            <span className="text-xs text-neutral-500">最低分享</span>
             <Input type="number" value={config.min_share_count} onChange={e => update("min_share_count", Number(e.target.value))} className="h-9" />
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">最低收藏</span>
+            <span className="text-xs text-neutral-500">最低收藏</span>
             <Input type="number" value={config.min_collect_count} onChange={e => update("min_collect_count", Number(e.target.value))} className="h-9" />
           </label>
 
@@ -131,14 +131,14 @@ export function CrawlConfigForm({ scope }: { scope: "creator" | "keyword" }) {
               type="checkbox"
               checked={config.exclude_slideshow}
               onChange={e => update("exclude_slideshow", e.target.checked)}
-              className="h-4 w-4 accent-[#C04A1A]"
+              className="h-4 w-4 accent-[hsl(var(--color-ikb))]"
             />
-            <span className="text-xs text-zinc-600">只爬视频(排除图文)</span>
+            <span className="text-xs text-neutral-600">只爬视频(排除图文)</span>
           </label>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={saving} size="sm" className="bg-[#C04A1A] text-white hover:bg-[#A93D15]">
+          <Button onClick={handleSave} disabled={saving} size="sm" className="bg-[hsl(var(--color-ikb))] text-white hover:bg-[hsl(var(--color-ikb))]">
             {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
             保存配置
           </Button>

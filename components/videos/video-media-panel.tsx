@@ -80,8 +80,8 @@ interface MetricCellProps {
 
 function MetricCell({ icon, label, value }: MetricCellProps) {
   return (
-    <div className="flex items-center gap-3 rounded-md border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-      <span className="text-zinc-500 dark:text-zinc-400">{icon}</span>
+    <div className="flex items-center gap-3  border border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <span className="text-neutral-500 dark:text-neutral-400">{icon}</span>
       <div className="min-w-0">
         <Numeric className="block text-lg leading-none">{formatCount(value)}</Numeric>
         <Muted className="mt-1 block">{label}</Muted>
@@ -152,7 +152,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[300px_1fr]">
         {/* ===== 左侧:视频播放器 ===== */}
         <div>
-          <div className="relative aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="relative aspect-[9/16] w-full max-w-[300px] overflow-hidden  border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
             {video.video_file_url ? (
               <video
                 src={video.video_file_url}
@@ -170,13 +170,13 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
                   alt={video.title ?? "视频封面"}
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-black/70 px-3 py-2 text-xs text-zinc-100">
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-black/70 px-3 py-2 text-xs text-neutral-100">
                   <Download className="h-3.5 w-3.5" />
                   视频未下载或下载失败
                 </div>
               </>
             ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-400">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-400">
                 <VideoIcon className="h-8 w-8" />
                 <span className="text-xs">无可用视频</span>
               </div>
@@ -189,7 +189,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
               href={video.original_url}
               target="_blank"
               rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-xs text-zinc-500 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline dark:text-neutral-400 dark:hover:text-neutral-50"
             >
               在 TikTok 打开原视频
               <ExternalLink className="h-3 w-3" />
@@ -215,7 +215,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
             {video.analysis_status === "failed" && video.error_message ? (
               <div
                 role="alert"
-                className="flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+                className="flex items-start gap-2.5  border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span className="break-words">
@@ -268,7 +268,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <Muted>
                   此视频来自{" "}
-                  <span className="text-zinc-700 dark:text-zinc-300">
+                  <span className="text-neutral-700 dark:text-neutral-300">
                     {SOURCE_LABELS[video.source_type] ?? video.source_type}
                   </span>
                   ,请到对应的订阅页面取消订阅后批量删除
@@ -280,7 +280,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
           {/* 互动数据 5 列 */}
           <div>
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-serif text-base font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+              <h2 className="font-serif text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
                 原始互动数据
               </h2>
               <Muted className="font-mono uppercase tracking-[0.18em]">
@@ -319,7 +319,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
           {/* 完整旁白 */}
           <div>
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-serif text-base font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+              <h2 className="font-serif text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
                 完整旁白
               </h2>
               <Muted className="font-mono uppercase tracking-[0.18em]">
@@ -328,18 +328,18 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
             </div>
             {subtitleText ? (
               <details
-                className="group rounded-md border border-zinc-200 bg-white px-4 py-3 open:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:open:bg-zinc-900/50"
+                className="group  border border-neutral-200 bg-white px-4 py-3 open:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:open:bg-neutral-900/50"
                 open
               >
-                <summary className="cursor-pointer list-none text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+                <summary className="cursor-pointer list-none text-xs font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50">
                   展开 / 收起旁白全文
                 </summary>
-                <P className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+                <P className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
                   {subtitleText}
                 </P>
               </details>
             ) : (
-              <div className="rounded-md border border-dashed border-zinc-200 px-4 py-6 text-center dark:border-zinc-800">
+              <div className=" border border-dashed border-neutral-200 px-4 py-6 text-center dark:border-neutral-800">
                 <Muted>暂无旁白文本 · 通常在视频下载与音频提取后生成</Muted>
               </div>
             )}
@@ -348,7 +348,7 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
           {/* 基础信息 */}
           <div>
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-serif text-base font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+              <h2 className="font-serif text-base font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
                 基础信息
               </h2>
               <Muted className="font-mono uppercase tracking-[0.18em]">
@@ -357,28 +357,28 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
             </div>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div className="flex items-start gap-2.5">
-                <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
                 <div className="min-w-0">
-                  <dt className="text-xs text-zinc-500">作者</dt>
-                  <dd className="truncate text-zinc-900 dark:text-zinc-100">
+                  <dt className="text-xs text-neutral-500">作者</dt>
+                  <dd className="truncate text-neutral-900 dark:text-neutral-100">
                     {video.author_name ? `@${video.author_name}` : "未知"}
                   </dd>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
                 <div className="min-w-0">
-                  <dt className="text-xs text-zinc-500">发布时间</dt>
-                  <dd className="text-zinc-900 dark:text-zinc-100">
+                  <dt className="text-xs text-neutral-500">发布时间</dt>
+                  <dd className="text-neutral-900 dark:text-neutral-100">
                     {video.publish_time ? formatDateTime(video.publish_time) : "—"}
                   </dd>
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
                 <div className="min-w-0">
-                  <dt className="text-xs text-zinc-500">时长</dt>
-                  <dd className="text-zinc-900 dark:text-zinc-100">
+                  <dt className="text-xs text-neutral-500">时长</dt>
+                  <dd className="text-neutral-900 dark:text-neutral-100">
                     {video.duration != null
                       ? formatDuration(video.duration)
                       : "—"}
@@ -386,20 +386,20 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
                 </div>
               </div>
               <div className="flex items-start gap-2.5">
-                <Play className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <Play className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
                 <div className="min-w-0">
-                  <dt className="text-xs text-zinc-500">来源</dt>
-                  <dd className="text-zinc-900 dark:text-zinc-100">
+                  <dt className="text-xs text-neutral-500">来源</dt>
+                  <dd className="text-neutral-900 dark:text-neutral-100">
                     {SOURCE_LABELS[video.source_type] ?? video.source_type}
                     {video.source_value ? (
-                      <span className="ml-1.5 text-xs text-zinc-500">
+                      <span className="ml-1.5 text-xs text-neutral-500">
                         · {video.source_value}
                       </span>
                     ) : null}
                     {video.source_type === "creator_monitor" ? (
                       <Link
                         href="/creators"
-                        className="ml-2 text-xs font-medium text-[#C04A1A] underline-offset-4 hover:underline"
+                        className="ml-2 text-xs font-medium text-[hsl(var(--color-ikb))] underline-offset-4 hover:underline"
                       >
                         取消订阅
                       </Link>
@@ -409,14 +409,14 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
               </div>
               {video.hashtags && video.hashtags.length > 0 ? (
                 <div className="flex items-start gap-2.5 sm:col-span-2">
-                  <Hash className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                  <Hash className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
                   <div className="min-w-0">
-                    <dt className="text-xs text-zinc-500">话题标签</dt>
+                    <dt className="text-xs text-neutral-500">话题标签</dt>
                     <dd className="flex flex-wrap gap-1.5 pt-1">
                       {video.hashtags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                          className="inline-flex items-center  border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
                         >
                           #{tag}
                         </span>

@@ -8,7 +8,7 @@ import { ANALYSIS_STATUSES, STATUS_LABELS, type AnalysisStatus } from "@/types";
 /**
  * 状态筛选下拉 — Editorial 风格:
  * - 原生 <select>(更轻量,无 popover,更符合"杂志克制"调性)
- * - 边框 + zinc 中性色,与 StatusBadge 风格一致
+ * - 边框 + neutral 中性色,与 StatusBadge 风格一致
  * - 父组件完全 controlled,只暴露 value + onChange
  */
 
@@ -37,9 +37,9 @@ export function StatusFilter({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        "h-9 rounded-md border border-zinc-200 bg-white px-3 pr-8 text-sm text-zinc-900 transition-colors",
-        "focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 focus:ring-offset-0",
-        "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800",
+        "h-9  border border-neutral-200 bg-white px-3 pr-8 text-sm text-neutral-900 transition-colors",
+        "focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-200 focus:ring-offset-0",
+        "dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-600 dark:focus:ring-neutral-800",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}

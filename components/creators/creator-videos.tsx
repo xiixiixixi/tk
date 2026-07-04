@@ -158,7 +158,7 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
       {/* Toolbar */}
       <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
         <div className="flex items-baseline gap-3">
-          <h2 className="font-serif text-2xl tracking-tight text-zinc-950 dark:text-zinc-50">
+          <h2 className="font-serif text-2xl tracking-tight text-neutral-900 dark:text-neutral-50">
             采集的视频
           </h2>
           <Muted className="font-mono tabular-nums">
@@ -176,7 +176,7 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
       {error ? (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+          className=" border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
         >
           {error}
         </div>
@@ -213,7 +213,7 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
 
           {/* 加载提示 */}
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-4 text-xs text-zinc-500">
+            <div className="flex items-center justify-center gap-2 py-4 text-xs text-neutral-500">
               <Loader2 className="h-3 w-3 animate-spin" />
               加载中
             </div>
@@ -233,9 +233,9 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1 || loading}
               className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 transition-colors",
-                "hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50",
-                "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                "inline-flex h-9 items-center gap-1  border border-neutral-200 bg-white px-3 text-sm text-neutral-700 transition-colors",
+                "hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50",
+                "dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900"
               )}
               aria-label="上一页"
             >
@@ -247,9 +247,9 @@ export function CreatorVideos({ creatorId, authorId }: CreatorVideosProps) {
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages || loading}
               className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 transition-colors",
-                "hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50",
-                "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                "inline-flex h-9 items-center gap-1  border border-neutral-200 bg-white px-3 text-sm text-neutral-700 transition-colors",
+                "hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50",
+                "dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-900"
               )}
               aria-label="下一页"
             >
@@ -284,14 +284,14 @@ function VideoCard({ video, isNew }: VideoCardProps) {
     <Link
       href={`/videos/${video.id}`}
       className={cn(
-        "group block focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:ring-offset-2 dark:focus:ring-zinc-700",
+        "group block focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:ring-offset-2 dark:focus:ring-neutral-700",
         !terminal && "opacity-75"
       )}
       aria-label={`查看 ${video.title ?? "视频"} 详情`}
     >
-      <Card className="flex h-full flex-col gap-3 overflow-hidden p-0 transition-colors group-hover:border-zinc-300 dark:group-hover:border-zinc-700">
+      <Card className="flex h-full flex-col gap-3 overflow-hidden p-0 transition-colors group-hover:border-neutral-300 dark:group-hover:border-neutral-700">
         {/* 封面 */}
-        <div className="relative aspect-video w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+        <div className="relative aspect-video w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900">
           {video.cover_url ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -300,7 +300,7 @@ function VideoCard({ video, isNew }: VideoCardProps) {
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
+            <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
               <Film className="h-8 w-8" />
             </div>
           )}
@@ -308,7 +308,7 @@ function VideoCard({ video, isNew }: VideoCardProps) {
             <div className="absolute right-2 top-2">
               <Badge
                 variant="default"
-                className="border-[#C04A1A]/30 bg-[#C04A1A] text-white shadow-sm hover:bg-[#C04A1A]/90"
+                className="border-[hsl(var(--color-ikb))]/30 bg-[hsl(var(--color-ikb))] text-white  hover:bg-[hsl(var(--color-ikb))]/90"
               >
                 <Sparkles className="mr-1 h-3 w-3" />
                 NEW
@@ -320,7 +320,7 @@ function VideoCard({ video, isNew }: VideoCardProps) {
         {/* 文字区 */}
         <div className="flex flex-1 flex-col gap-3 p-4">
           <h3
-            className="line-clamp-2 text-sm font-medium leading-snug text-zinc-900 group-hover:text-zinc-950 dark:text-zinc-50 dark:group-hover:text-white"
+            className="line-clamp-2 text-sm font-medium leading-snug text-neutral-900 group-hover:text-neutral-900 dark:text-neutral-50 dark:group-hover:text-white"
             title={video.title ?? ""}
           >
             {truncate(video.title, TITLE_MAX)}
@@ -336,7 +336,7 @@ function VideoCard({ video, isNew }: VideoCardProps) {
                 {formatRelative(video.created_at)}
               </Muted>
             </div>
-            <div className="flex items-center justify-between border-t border-zinc-100 pt-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+            <div className="flex items-center justify-between border-t border-neutral-100 pt-2 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
               <span>
                 播放{" "}
                 <Numeric className="text-xs">

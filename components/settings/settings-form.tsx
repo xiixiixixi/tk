@@ -231,7 +231,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </CardHeader>
         {envOpen ? (
           <CardContent className="pt-0">
-            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {SECRETS.map((s) => {
                 const status = initialSettings.env[s.key] ?? { present: false };
                 return (
@@ -241,10 +241,10 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium">{s.label}</div>
-                      <div className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="mt-0.5 font-mono text-xs text-neutral-500 dark:text-neutral-400">
                         {s.key}
                       </div>
-                      <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                         {s.hint}
                       </div>
                     </div>
@@ -291,16 +291,16 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           {schedules.map((s) => (
             <div
               key={s.configKey}
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+              className="flex items-center justify-between gap-3  border border-neutral-200 p-3 dark:border-neutral-800"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{s.label}</div>
-                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                   {s.description}
                 </div>
               </div>
               <select
-                className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono tabular-nums dark:border-zinc-700 dark:bg-zinc-900"
+                className="h-9  border border-neutral-200 bg-white px-2.5 text-sm font-mono tabular-nums dark:border-neutral-700 dark:bg-neutral-900"
                 value={s.intervalMinutes}
                 disabled={scheduleSaving}
                 onChange={(e) => {
@@ -318,12 +318,12 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           ))}
 
           {scheduleMsg ? (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+            <div className=" border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
               {scheduleMsg}
             </div>
           ) : null}
           {scheduleErr ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            <div className=" border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
               {scheduleErr}
             </div>
           ) : null}
@@ -339,13 +339,13 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 pt-0 sm:grid-cols-2">
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="flex items-center justify-between  border border-neutral-200 p-3 dark:border-neutral-800">
             <div>
               <div className="text-sm font-medium">批量大小</div>
-              <div className="text-xs text-zinc-500">每次取 N 个待处理视频</div>
+              <div className="text-xs text-neutral-500">每次取 N 个待处理视频</div>
             </div>
             <select
-              className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-900"
+              className="h-9  border border-neutral-200 bg-white px-2.5 text-sm font-mono dark:border-neutral-700 dark:bg-neutral-900"
               value={pipeline.batchSize}
               disabled={scheduleSaving}
               onChange={(e) => {
@@ -358,13 +358,13 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
               ))}
             </select>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="flex items-center justify-between  border border-neutral-200 p-3 dark:border-neutral-800">
             <div>
               <div className="text-sm font-medium">并发数</div>
-              <div className="text-xs text-zinc-500">同时处理几个视频</div>
+              <div className="text-xs text-neutral-500">同时处理几个视频</div>
             </div>
             <select
-              className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-900"
+              className="h-9  border border-neutral-200 bg-white px-2.5 text-sm font-mono dark:border-neutral-700 dark:bg-neutral-900"
               value={pipeline.concurrency}
               disabled={scheduleSaving}
               onChange={(e) => {
@@ -417,12 +417,12 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
             </Button>
           </form>
           {testMessage ? (
-            <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+            <div className="mt-3  border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
               {testMessage}
             </div>
           ) : null}
           {testError ? (
-            <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            <div className="mt-3  border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
               {testError}
             </div>
           ) : null}
@@ -435,7 +435,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 function MockField({ label, value }: { label: string; value: boolean }) {
   const on = label === "MOCK_GEMINI" ? value : value;
   return (
-    <div className="flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+    <div className="flex items-center justify-between  border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-800">
       <span className="font-mono text-xs">{label}</span>
       <Badge variant={on ? "default" : "outline"}>{on ? "ON" : "OFF"}</Badge>
     </div>

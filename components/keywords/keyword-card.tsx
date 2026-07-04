@@ -175,12 +175,12 @@ export function KeywordCard({
 
   return (
     <Link href={`/keywords/${keyword.id}`} className="group block">
-      <Card className="flex flex-col gap-5 p-5 transition-colors group-hover:border-zinc-300 dark:group-hover:border-zinc-700">
+      <Card className="flex flex-col gap-5 p-5 transition-colors group-hover:border-neutral-300 dark:group-hover:border-neutral-700">
         <div className="flex items-start gap-4">
           {/* 左:Tags icon 占位 */}
           <div
             aria-hidden
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+            className="flex h-12 w-12 shrink-0 items-center justify-center  bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
           >
             <Tags className="h-6 w-6" />
           </div>
@@ -204,11 +204,11 @@ export function KeywordCard({
 
             {/* 筛选条件摘要 — 一行 chip,空条件不显示 */}
             {filterChips.length > 0 ? (
-              <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
                 {filterChips.join(" · ")}
               </p>
             ) : (
-              <p className="text-xs leading-relaxed text-zinc-400 dark:text-zinc-600">
+              <p className="text-xs leading-relaxed text-neutral-400 dark:text-neutral-600">
                 无筛选条件,采集全部搜索结果
               </p>
             )}
@@ -255,7 +255,7 @@ export function KeywordCard({
                 size="sm"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+                className="text-neutral-500 hover:text-red-600 dark:hover:text-red-400"
                 aria-label={`删除 ${keyword.keyword}`}
               >
                 {deleting ? (
@@ -465,7 +465,7 @@ export function KeywordsList({ initialKeywords }: KeywordsListProps) {
             value={filter}
             onChange={(e) => setFilter(e.target.value as StatusFilter)}
             aria-label="按状态筛选"
-            className="h-9 rounded-md border border-zinc-200 bg-white px-3 pr-8 text-sm text-zinc-900 transition-colors focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
+            className="h-9  border border-neutral-200 bg-white px-3 pr-8 text-sm text-neutral-900 transition-colors focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-200 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-600 dark:focus:ring-neutral-800"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
