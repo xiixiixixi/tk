@@ -3,10 +3,6 @@ import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 
-import { startScheduler } from "@/lib/scheduler";
-
-// 服务启动时初始化调度器(幂等,多次调用安全)
-startScheduler();
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
