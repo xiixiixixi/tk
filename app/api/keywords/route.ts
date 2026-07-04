@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  *     keyword: string,                       // 必填,1-100 字符
  *     region?: string,                       // 可选,默认 'US'
  *     language?: string,                     // 可选,默认 'en'
- *     fetch_limit?: number,                  // 可选,1-100,默认 20
+ *     fetch_limit?: number,                  // 可选,1-200,默认 200
  *     monitor_frequency?: string,            // 可选,默认 'daily'
  *     // Phase 6 筛选条件(以下均可选,null/不传 = 该维度不限制)
  *     min_play_count?: number,               // 非负整数
@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 
 const KEYWORD_MAX_LENGTH = 100;
 const FETCH_LIMIT_MIN = 1;
-const FETCH_LIMIT_MAX = 100;
+const FETCH_LIMIT_MAX = 200;
 
 function isValidKeyword(value: unknown): value is string {
   if (typeof value !== "string") return false;

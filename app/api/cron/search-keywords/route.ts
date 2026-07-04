@@ -77,7 +77,7 @@ export async function GET(req: Request) {
 
       const videos = isMock
         ? mockKeywordVideos(keyword)
-        : await fetchRealSearchVideos(keyword.keyword, keyword.fetch_limit ?? 20);
+        : await fetchRealSearchVideos(keyword.keyword, keyword.fetch_limit ?? 200);
 
       for (const data of videos) {
         if (!data.id) {

@@ -61,7 +61,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
           <Muted className="font-mono uppercase tracking-[0.18em]">
             Creator Profile · 博主档案
           </Muted>
-          <H1 size="lg" className="text-4xl tracking-tighter md:text-5xl">
+          <H1 className="text-xl font-medium tracking-tight">
             @{displayName}
           </H1>
           {creator.category ? (

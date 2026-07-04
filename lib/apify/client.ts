@@ -119,7 +119,7 @@ export function creatorIncrementalLimit(): number {
 /** 关键词搜索(search_keyword),返回 runId */
 export async function startSearchRun(
   query: string,
-  resultsPerPage = 20
+  resultsPerPage = 200
 ): Promise<string> {
   return startRun({
     searchQueries: [query],

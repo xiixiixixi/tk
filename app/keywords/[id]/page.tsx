@@ -61,7 +61,7 @@ export default async function KeywordDetailPage({ params }: PageProps) {
           <Muted className="font-mono uppercase tracking-[0.18em]">
             Keyword · 关键词档案
           </Muted>
-          <H1 size="lg" className="text-4xl tracking-tighter md:text-5xl">
+          <H1 className="text-xl font-medium tracking-tight">
             {keyword.keyword}
           </H1>
 

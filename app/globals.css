@@ -1,73 +1,66 @@
 @import "tailwindcss";
 
 /*
- * 暖橙 Editor 设计系统(v0.9 重做)
+ * 极简设计系统 — 日式留白
  *
- * 设计哲学(huashu-design):
- *   - 米白底 #FAF8F5(有温度,不是冷白)
- *   - 单一 rust 橙 accent #C04A1A(贯穿 CTA/链接/状态高亮)
- *   - 衬线 display(思源宋体)+ 无衬线 body(Geist)
- *   - 反 AI slop:不用紫渐变、不用 emoji 图标、不用圆角卡+左 border accent
- *   - 克制:少容器、少 border、少装饰 icon,给内容留气口
+ * - 纯白底,单一中性色阶
+ * - 无衬线,紧缩 tracking
+ * - 无装饰、无阴影、无彩色
+ * - 信息层级靠间距和字重,不靠颜色
  */
 
 @layer base {
   :root {
-    /* 底色:暖米白(不是冷白) */
-    --background: 32 33% 97%;          /* #FAF8F5 */
-    --foreground: 24 10% 12%;          /* 深棕黑,不是纯黑 */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
 
-    /* 卡片:比底色略亮一点 */
-    --card: 32 40% 99%;
-    --card-foreground: 24 10% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
 
-    --popover: 32 40% 99%;
-    --popover-foreground: 24 10% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Primary = rust 橙(唯一 accent) */
-    --primary: 16 75% 42%;             /* #C04A1A */
-    --primary-foreground: 32 40% 99%;  /* 白字 */
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary:暖灰 */
-    --secondary: 30 15% 92%;
-    --secondary-foreground: 24 10% 18%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 30 12% 93%;
-    --muted-foreground: 24 6% 45%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
 
-    /* Accent = 同 primary(rust 橙) */
-    --accent: 16 75% 42%;
-    --accent-foreground: 32 40% 99%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
 
     --destructive: 0 72% 50%;
-    --destructive-foreground: 32 40% 99%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 88%;              /* 暖灰边框 */
-    --input: 30 12% 88%;
-    --ring: 16 75% 42%;                /* focus ring 也是橙 */
-    --radius: 0.375rem;                /* 6px,比默认 8px 收紧 */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 9%;
+    --radius: 0.25rem;
   }
 
   .dark {
-    --background: 24 10% 8%;           /* 带暖调的深色,不是死黑 */
-    --foreground: 32 25% 92%;
-    --card: 24 10% 11%;
-    --card-foreground: 32 25% 92%;
-    --popover: 24 10% 11%;
-    --popover-foreground: 32 25% 92%;
-    --primary: 16 80% 55%;             /* 暗色下橙提亮 */
-    --primary-foreground: 24 10% 8%;
-    --secondary: 24 6% 18%;
-    --secondary-foreground: 32 25% 92%;
-    --muted: 24 6% 16%;
-    --muted-foreground: 30 8% 62%;
-    --accent: 16 80% 55%;
-    --accent-foreground: 24 10% 8%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 0 0% 93%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 11%;
+    --accent-foreground: 0 0% 93%;
     --destructive: 0 62% 45%;
-    --destructive-foreground: 32 40% 99%;
-    --border: 24 6% 20%;
-    --input: 24 6% 20%;
-    --ring: 16 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 93%;
   }
 }
 
@@ -96,20 +89,14 @@
   --radius-sm: calc(var(--radius) - 4px);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-serif);
 }
 
 @layer base {
-  * {
-    border-color: hsl(var(--border));
-  }
+  * { border-color: hsl(var(--border)); }
   body {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-  }
-  /* display 标题用衬线,有性格 */
-  h1, h2, h3 {
-    font-family: var(--font-serif), var(--font-geist-sans), serif;
-    letter-spacing: -0.02em;
+    font-feature-settings: "cv01", "ss01";
+    -webkit-font-smoothing: antialiased;
   }
 }
