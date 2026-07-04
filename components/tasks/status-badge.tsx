@@ -41,9 +41,9 @@ const statusBadgeVariants = cva(
           "border-zinc-200 bg-red-50 text-red-700 dark:border-zinc-800 dark:bg-red-950/40 dark:text-red-400",
         warning:
           "border-zinc-200 bg-amber-50 text-amber-700 dark:border-zinc-800 dark:bg-amber-950/40 dark:text-amber-400",
-        // 处理中:慢节拍 2s pulse,Tailwind 默认 animate-pulse 就是 2s cubic-bezier(0.4,0,0.6,1) infinite
+        // 处理中:rust 橙脉冲(暖橙 Editor 的标志色)
         processing:
-          "border-zinc-200 bg-zinc-100 text-zinc-700 animate-pulse dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300",
+          "border-[#C04A1A]/30 bg-[#C04A1A]/10 text-[#C04A1A] animate-pulse dark:border-[#C04A1A]/40 dark:bg-[#C04A1A]/20 dark:text-[#E8855A]",
       },
       size: {
         default: "",

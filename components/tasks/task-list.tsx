@@ -96,12 +96,12 @@ export function TaskList() {
   return (
     <section className="space-y-5">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl dark:text-zinc-50">
+        <h2 className="font-serif text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl dark:text-zinc-50">
           最近的任务
         </h2>
         <Link
           href="/videos"
-          className="text-sm text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
+          className="text-sm text-[#C04A1A] underline-offset-4 hover:underline"
         >
           查看全部 →
         </Link>

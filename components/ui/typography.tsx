@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 // ---------- H1 — 大标题 ----------
 const h1Variants = cva(
-  "font-semibold tracking-tight text-zinc-950 dark:text-zinc-50",
+  "font-serif font-semibold tracking-tight text-zinc-950 dark:text-zinc-50",
   {
     variants: {
       size: {
@@ -54,7 +54,7 @@ H1.displayName = "H1";
 
 // ---------- H2 — section 标题 ----------
 const h2Variants = cva(
-  "font-semibold tracking-tight text-zinc-950 dark:text-zinc-50",
+  "font-serif font-semibold tracking-tight text-zinc-950 dark:text-zinc-50",
   {
     variants: {
       size: {
@@ -91,7 +91,7 @@ const H3 = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-medium text-zinc-950 dark:text-zinc-50", className)}
+    className={cn("font-serif text-lg font-medium text-zinc-950 dark:text-zinc-50", className)}
     {...props}
   />
 ));

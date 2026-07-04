@@ -287,10 +287,10 @@ function Section02Overview({ analysis }: { analysis: ParsedAnalysis }) {
       <SectionHeading index="02" label="Overview · 基础判断" title="这条视频讲的是什么" />
 
       <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-white pl-6 pr-6 py-6 dark:border-zinc-800 dark:bg-zinc-950">
-        {/* 紫色左侧条 accent bar */}
+        {/* rust 橙左侧条 accent bar */}
         <div
           aria-hidden
-          className="absolute inset-y-0 left-0 w-1.5 bg-indigo-700 dark:bg-indigo-400"
+          className="absolute inset-y-0 left-0 w-1.5 bg-[#C04A1A] dark:bg-[#E8855A]"
         />
 
         <dl className="space-y-6">
@@ -301,7 +301,7 @@ function Section02Overview({ analysis }: { analysis: ParsedAnalysis }) {
                 类型
               </dt>
               <dd>
-                <span className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+                <span className="inline-flex items-center rounded-md border border-[#C04A1A]/20 bg-[#C04A1A]/10 px-3 py-1 text-sm font-semibold text-[#C04A1A] dark:border-[#C04A1A]/40 dark:bg-[#C04A1A]/20 dark:text-[#E8855A]">
                   {analysis.video_type}
                 </span>
               </dd>
