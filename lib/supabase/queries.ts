@@ -295,28 +295,30 @@ export async function updateTask(
 }
 
 // ============================================================
-// Phase 2 调度器(get_next_pending_video RPC)
-// 用原始 fetch 调 PostgREST(绕过 Supabase JS client 的潜在配置问题)
+// Phase 2 调度器(取待处理视频)
+// 用 Supabase JS client 直接查 videos 表,不用 RPC(避免权限问题)
 // ============================================================
-export async function getNextPendingVideo(): Promise<PipelineNextRow | null> {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_next_pending_video`;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Supabase URL 或 service_role key 缺失");
+const PENDING_STATUSES = [
+  "new",
+  "apify_started",
+  "metadata_fetched",
+  "video_processed",
+  "audio_extracted",
+  "analyzing",
+  "pending_analysis",
+] as const;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`getNextPendingVideo HTTP ${res.status}: ${await res.text()}`);
-  }
-  const rows = (await res.json()) as PipelineNextRow[];
-  return rows.length > 0 ? rows[0] : null;
+export async function getNextPendingVideo(): Promise<PipelineNextRow | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("videos")
+    .select("id, analysis_status, tiktok_video_id")
+    .in("analysis_status", PENDING_STATUSES)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data[0] as PipelineNextRow;
 }
 
 // ============================================================
