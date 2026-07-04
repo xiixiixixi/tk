@@ -31,6 +31,8 @@ export default async function SettingsPage() {
       },
       mocks: { MOCK_APIFY: false, MOCK_GEMINI: false },
       db: { tableCount: 0 },
+      schedules: [],
+      pipeline: { batchSize: 3, concurrency: 2 },
     };
   }
 

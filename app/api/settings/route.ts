@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { getAllAppConfig, setAppConfigs } from "@/lib/app-config";
 
 export const dynamic = "force-dynamic";
 
@@ -45,11 +46,48 @@ function readBool(value: string | undefined): boolean {
  *
  * 安全:此函数**绝不返回**完整 secret key,只返 present + 末 4 位 suffix。
  */
+export interface ScheduleInfo {
+  jobId: string;
+  label: string;
+  configKey: string;
+  intervalMinutes: number;
+  description: string;
+}
+
 export interface SettingsSnapshot {
   env: Record<SecretKey, SecretStatus>;
   mocks: { MOCK_APIFY: boolean; MOCK_GEMINI: boolean };
   db: { tableCount: number };
+  schedules: ScheduleInfo[];
+  pipeline: { batchSize: number; concurrency: number };
 }
+
+// 调度 job 元数据(configKey → 展示信息)
+const SCHEDULE_META: Record<
+  string,
+  { label: string; description: string; defaultInterval: number }
+> = {
+  schedule_process_interval_min: {
+    label: "推进 Pipeline",
+    description: "把队列里待处理视频逐步向前推进,直到分析完成。",
+    defaultInterval: 1,
+  },
+  schedule_monitor_creators_interval_min: {
+    label: "监控博主",
+    description: "抓取所有 active 博主的新视频并自动解析。",
+    defaultInterval: 60,
+  },
+  schedule_search_keywords_interval_min: {
+    label: "搜索关键词",
+    description: "对每个 active 关键词跑 TikTok 搜索并解析新视频。",
+    defaultInterval: 120,
+  },
+  schedule_refresh_metrics_interval_min: {
+    label: "刷新互动数据",
+    description: "重抓 completed 视频的播放/点赞/评论数。",
+    defaultInterval: 1440,
+  },
+};
 
 export async function getSettingsSnapshot(): Promise<SettingsSnapshot> {
   const env = {} as Record<SecretKey, SecretStatus>;
@@ -66,6 +104,38 @@ export async function getSettingsSnapshot(): Promise<SettingsSnapshot> {
     dbSnapshot = { tableCount: 0 };
   }
 
+  // 读调度配置(DB 不可用时回退默认值)
+  let configMap: Map<string, string> = new Map();
+  try {
+    configMap = await getAllAppConfig();
+  } catch (e) {
+    console.error("[api/settings] read app_config failed:", e);
+  }
+
+  const schedules: ScheduleInfo[] = Object.entries(SCHEDULE_META).map(
+    ([configKey, meta]) => {
+      const raw = configMap.get(configKey);
+      const intervalMinutes = raw
+        ? parseInt(raw, 10)
+        : meta.defaultInterval;
+      return {
+        jobId: configKey.replace(/^schedule_|_interval_min$/g, "").replace(/_/g, "-"),
+        label: meta.label,
+        configKey,
+        intervalMinutes: Number.isFinite(intervalMinutes)
+          ? intervalMinutes
+          : meta.defaultInterval,
+        description: meta.description,
+      };
+    }
+  );
+
+  const pipeline = {
+    batchSize: parseInt(configMap.get("pipeline_batch_size") ?? "3", 10) || 3,
+    concurrency:
+      parseInt(configMap.get("pipeline_concurrency") ?? "2", 10) || 2,
+  };
+
   return {
     env,
     mocks: {
@@ -73,6 +143,8 @@ export async function getSettingsSnapshot(): Promise<SettingsSnapshot> {
       MOCK_GEMINI: readBool(process.env.MOCK_GEMINI),
     },
     db: dbSnapshot,
+    schedules,
+    pipeline,
   };
 }
 
@@ -129,6 +201,10 @@ const TRIGGER_MAP: Record<TriggerAction, string> = {
 
 interface PostBody {
   triggerCron?: TriggerAction;
+  /** 更新调度间隔: { configKey: intervalMinutes } */
+  updateSchedules?: Record<string, number>;
+  /** 更新 Pipeline 并发配置 */
+  updatePipeline?: { batchSize?: number; concurrency?: number };
 }
 
 function isTriggerAction(v: unknown): v is TriggerAction {
@@ -146,11 +222,67 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json body" }, { status: 400 });
   }
 
+  // ---- action: 更新调度间隔 ----
+  if (body.updateSchedules) {
+    const entries: Array<{ key: string; value: string }> = [];
+    const validKeys = new Set(Object.keys(SCHEDULE_META));
+    for (const [configKey, minutes] of Object.entries(body.updateSchedules)) {
+      if (!validKeys.has(configKey)) continue;
+      if (typeof minutes !== "number" || minutes < 0) continue;
+      entries.push({ key: configKey, value: String(Math.round(minutes)) });
+    }
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { error: "no valid schedule keys" },
+        { status: 400 }
+      );
+    }
+    try {
+      await setAppConfigs(entries);
+      return NextResponse.json({ updated: entries.length });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : String(err) },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ---- action: 更新 Pipeline 并发配置 ----
+  if (body.updatePipeline) {
+    const entries: Array<{ key: string; value: string }> = [];
+    const { batchSize, concurrency } = body.updatePipeline;
+    if (batchSize != null) {
+      const n = Math.max(1, Math.min(20, Math.round(batchSize)));
+      entries.push({ key: "pipeline_batch_size", value: String(n) });
+    }
+    if (concurrency != null) {
+      const n = Math.max(1, Math.min(10, Math.round(concurrency)));
+      entries.push({ key: "pipeline_concurrency", value: String(n) });
+    }
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { error: "batchSize or concurrency required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await setAppConfigs(entries);
+      return NextResponse.json({ updated: entries.length });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : String(err) },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ---- action: 手动触发 cron ----
   if (!isTriggerAction(body.triggerCron)) {
     return NextResponse.json(
       {
         error:
-          "missing or invalid triggerCron(必须是 'process' | 'refresh-metrics' | 'monitor-creators' | 'search-keywords')",
+          "missing triggerCron / updateSchedules / updatePipeline",
       },
       { status: 400 },
     );

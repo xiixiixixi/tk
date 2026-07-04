@@ -27,10 +27,25 @@ interface SecretStatus {
   suffix?: string;
 }
 
+interface ScheduleInfo {
+  jobId: string;
+  label: string;
+  configKey: string;
+  intervalMinutes: number;
+  description: string;
+}
+
+interface PipelineConfig {
+  batchSize: number;
+  concurrency: number;
+}
+
 interface SettingsSnapshot {
   env: Record<string, SecretStatus>;
   mocks: { MOCK_APIFY: boolean; MOCK_GEMINI: boolean };
   db: { tableCount: number };
+  schedules: ScheduleInfo[];
+  pipeline: PipelineConfig;
 }
 
 interface SettingsFormProps {
@@ -48,40 +63,52 @@ const SECRETS: ReadonlyArray<{
   { key: "R2_SECRET_ACCESS_KEY", label: "R2 Secret Key", hint: "同 Access Key 对应的密钥" },
 ];
 
-interface ScheduleInfo {
-  label: string;
-  description: string;
-}
-
-// 各调度端点用途说明(展示用,均由 Railway cron 自动定时执行)
-const SCHEDULES: ReadonlyArray<ScheduleInfo> = [
-  {
-    label: "推进 Pipeline",
-    description: "把队列里待处理视频逐步向前推进,直到分析完成。",
-  },
-  {
-    label: "刷新互动数据",
-    description:
-      "重新抓取所有 completed 视频的播放/点赞/评论数(暂为 stub,Apify refresh 未实现)。",
-  },
-  {
-    label: "监控博主",
-    description: "抓取所有 active 博主的新视频,新视频入 videos 表后会由 Pipeline 自动分析。",
-  },
-  {
-    label: "搜索关键词",
-    description: "对每个 active 关键词跑一次 TikTok 搜索,新视频入 videos 表后由 Pipeline 自动分析。",
-  },
-];
 
 interface PostTaskResponse {
   task_id?: string;
   error?: string;
 }
 
+// 调度间隔可选值(分钟)
+const INTERVAL_OPTIONS = [
+  { value: 1, label: "1 分钟" },
+  { value: 5, label: "5 分钟" },
+  { value: 15, label: "15 分钟" },
+  { value: 30, label: "30 分钟" },
+  { value: 60, label: "1 小时" },
+  { value: 120, label: "2 小时" },
+  { value: 360, label: "6 小时" },
+  { value: 720, label: "12 小时" },
+  { value: 1440, label: "24 小时" },
+  { value: 2880, label: "48 小时" },
+];
+
+const CONCURRENCY_OPTIONS = [1, 2, 3, 5, 8, 10];
+const BATCH_OPTIONS = [1, 3, 5, 10, 15, 20];
+
+function formatInterval(minutes: number): string {
+  if (minutes < 60) return `${minutes} 分钟`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)} 小时`;
+  return `${Math.round(minutes / 1440)} 天`;
+}
+
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [envOpen, setEnvOpen] = React.useState(false);
 
+  // ---- 调度状态 ----
+  const [schedules, setSchedules] = React.useState(initialSettings.schedules);
+  const [pipeline, setPipeline] = React.useState(initialSettings.pipeline);
+  const [scheduleSaving, setScheduleSaving] = React.useState(false);
+  const [scheduleMsg, setScheduleMsg] = React.useState<string | null>(null);
+  const [scheduleErr, setScheduleErr] = React.useState<string | null>(null);
+
+  // init 变化时同步(如页面刷新)
+  React.useEffect(() => {
+    setSchedules(initialSettings.schedules);
+    setPipeline(initialSettings.pipeline);
+  }, [initialSettings.schedules, initialSettings.pipeline]);
+
+  // ---- 测试提交 ----
   const [testUrl, setTestUrl] = React.useState("");
   const [testSubmitting, setTestSubmitting] = React.useState(false);
   const [testMessage, setTestMessage] = React.useState<string | null>(null);
@@ -124,6 +151,62 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
   }
 
   const presentCount = Object.values(initialSettings.env).filter((s) => s.present).length;
+
+  // ---- 保存调度间隔 ----
+  async function saveSchedule(configKey: string, intervalMinutes: number) {
+    setScheduleMsg(null);
+    setScheduleErr(null);
+    setScheduleSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updateSchedules: { [configKey]: intervalMinutes } }),
+      });
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error ?? `HTTP ${res.status}`);
+      }
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.configKey === configKey ? { ...s, intervalMinutes } : s
+        )
+      );
+      setScheduleMsg("已保存,5 分钟内生效");
+      setTimeout(() => setScheduleMsg(null), 3000);
+    } catch (err) {
+      setScheduleErr(err instanceof Error ? err.message : "保存失败");
+      setTimeout(() => setScheduleErr(null), 5000);
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  // ---- 保存 Pipeline 并发配置 ----
+  async function savePipeline(update: { batchSize?: number; concurrency?: number }) {
+    setScheduleMsg(null);
+    setScheduleErr(null);
+    setScheduleSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updatePipeline: update }),
+      });
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error ?? `HTTP ${res.status}`);
+      }
+      setPipeline((prev) => ({ ...prev, ...update }));
+      setScheduleMsg("已保存");
+      setTimeout(() => setScheduleMsg(null), 3000);
+    } catch (err) {
+      setScheduleErr(err instanceof Error ? err.message : "保存失败");
+      setTimeout(() => setScheduleErr(null), 5000);
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -196,34 +279,104 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* ============== 3. 定时调度(read-only) ============== */}
+      {/* ============== 3. 定时调度(可编辑) ============== */}
       <Card>
         <CardHeader className="space-y-1.5">
           <CardTitle className="text-base">定时调度</CardTitle>
           <CardDescription>
-            以下任务已由 Railway 常驻 cron 自动定时执行,无需手动触发。
+            修改后即时保存,调度器每 5 分钟自动重载配置。所有时间单位为分钟。
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 pt-0 sm:grid-cols-2">
-          {SCHEDULES.map((s) => (
+        <CardContent className="space-y-3 pt-0">
+          {schedules.map((s) => (
             <div
-              key={s.label}
-              className="flex items-start justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+              key={s.configKey}
+              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{s.label}</div>
                 <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                   {s.description}
                 </div>
-                <div className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
-                  由 Railway 定时任务自动执行
-                </div>
               </div>
-              <Badge variant="outline" className="shrink-0">
-                自动
-              </Badge>
+              <select
+                className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono tabular-nums dark:border-zinc-700 dark:bg-zinc-900"
+                value={s.intervalMinutes}
+                disabled={scheduleSaving}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (Number.isFinite(v)) saveSchedule(s.configKey, v);
+                }}
+              >
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           ))}
+
+          {scheduleMsg ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+              {scheduleMsg}
+            </div>
+          ) : null}
+          {scheduleErr ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {scheduleErr}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {/* ============== 3.5 Pipeline 并发设置 ============== */}
+      <Card>
+        <CardHeader className="space-y-1.5">
+          <CardTitle className="text-base">Pipeline 并发</CardTitle>
+          <CardDescription>
+            每次 process 取多少视频(批量),以及同时处理几个(并发)。增大可加速积压清理,但会同时占用更多 API 调用。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 pt-0 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <div>
+              <div className="text-sm font-medium">批量大小</div>
+              <div className="text-xs text-zinc-500">每次取 N 个待处理视频</div>
+            </div>
+            <select
+              className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-900"
+              value={pipeline.batchSize}
+              disabled={scheduleSaving}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v)) savePipeline({ batchSize: v });
+              }}
+            >
+              {BATCH_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <div>
+              <div className="text-sm font-medium">并发数</div>
+              <div className="text-xs text-zinc-500">同时处理几个视频</div>
+            </div>
+            <select
+              className="h-9 rounded-md border border-zinc-200 bg-white px-2.5 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-900"
+              value={pipeline.concurrency}
+              disabled={scheduleSaving}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v)) savePipeline({ concurrency: v });
+              }}
+            >
+              {CONCURRENCY_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
         </CardContent>
       </Card>
 
