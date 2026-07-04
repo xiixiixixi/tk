@@ -8,6 +8,15 @@ import type { KeywordWithStats } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Muted } from "@/components/ui/typography";
 
 /**
  * 关键词列表 — 表格形式(同博主逻辑)
@@ -20,6 +29,7 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
   const [adding, setAdding] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState<KeywordWithStats | null>(null);
 
   async function refetch() {
     const res = await fetch("/api/keywords", { cache: "no-store" });
@@ -53,11 +63,13 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("确定删除这个关键词?")) return;
+  async function handleDelete() {
+    if (!deleting) return;
+    const id = deleting.id;
     setPendingDelete(id);
     try {
       await fetch(`/api/keywords/${id}`, { method: "DELETE" });
+      setDeleting(null);
       await refetch();
     } finally {
       setPendingDelete(null);
@@ -114,7 +126,7 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => handleDelete(k.id)}
+                      onClick={() => setDeleting(k)}
                       disabled={pendingDelete === k.id}
                       className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:text-red-600 disabled:opacity-50"
                     >
@@ -127,6 +139,50 @@ export function KeywordsTable({ initialKeywords }: { initialKeywords: KeywordWit
           </table>
         </div>
       )}
+
+      {/* 删除确认弹窗 */}
+      <Dialog
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (pendingDelete) return;
+          if (!open) setDeleting(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              取消订阅关键词「{deleting?.keyword ?? ""}」?
+            </DialogTitle>
+            <DialogDescription asChild>
+              <Muted>
+                将删除该关键词相关的 {deleting?.video_count ?? 0} 条视频
+                {deleting && deleting.analyzed_count > 0
+                  ? `(其中 ${deleting.analyzed_count} 条已分析)`
+                  : ""}
+                。不可撤销。
+              </Muted>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-2 gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleting(null)}
+              disabled={!!pendingDelete}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={!!pendingDelete}
+              className="min-w-[96px] bg-red-600 text-white hover:bg-red-700"
+            >
+              {pendingDelete ? "删除中…" : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

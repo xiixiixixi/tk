@@ -1,17 +1,27 @@
 import { getSupabaseAdmin } from "@/lib/supabase/client";
-import { deleteKeyword, updateKeyword } from "@/lib/supabase/queries";
+import {
+  cascadeDeleteKeywordVideos,
+  deleteKeyword,
+  getKeywordById,
+  getKeywordVideoStats,
+  updateKeyword,
+} from "@/lib/supabase/queries";
 import type { KeywordRow, KeywordUpdate } from "@/lib/pipeline/types";
 
 /**
  * DELETE /api/keywords/:id
  * 从监控列表中移除一个关键词。
  *
+ * 副作用:会调用 cascadeDeleteKeywordVideos 把该 keyword
+ * 采到的所有未删除视频一并软删除(deleted_at = NOW())。返回值中
+ * deleted_videos_count 让前端确认弹窗展示"将一并删除 N 条视频"。
+ *
  * 校验:id 必须是 UUID v4 形式(PostgreSQL gen_random_uuid() 输出)
  *
- * 204 → 删除成功(无 body)
+ * 200 → { id, deleted_videos_count: number }
  * 400 → id 不是 UUID
  * 404 → 记录不存在
- * 500 → 删除失败
+ * 500 → 查询 / 级联软删 / 删除关键词失败
  *
  * PATCH /api/keywords/:id
  * 编辑一个关键词的字段(状态切换 / 筛选条件)。
@@ -44,6 +54,48 @@ const NON_NEGATIVE_INT_FIELDS = [
   "max_duration_sec",
 ] as const;
 
+/**
+ * GET /api/keywords/:id
+ * 返回该关键词详情 + 视频统计(总数 / 已分析数),
+ * 供前端删除确认弹窗展示"将一并删除 N 条视频"使用。
+ *
+ * 200 → KeywordWithStats(keywords 行字段 + video_count + analyzed_count)
+ * 400 → id 不是 UUID
+ * 404 → keyword 不存在
+ * 500 → 查询失败
+ */
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  if (!UUID_PATTERN.test(id)) {
+    return Response.json({ error: "id 必须是合法的 UUID" }, { status: 400 });
+  }
+
+  let keyword: KeywordRow | null;
+  try {
+    keyword = await getKeywordById(id);
+  } catch (err) {
+    console.error("[GET /api/keywords/:id] 查询失败", err);
+    return Response.json({ error: "查询失败" }, { status: 500 });
+  }
+
+  if (!keyword) {
+    return Response.json({ error: "keyword 不存在" }, { status: 404 });
+  }
+
+  try {
+    const stats = await getKeywordVideoStats(keyword.keyword);
+    return Response.json({ ...keyword, ...stats }, { status: 200 });
+  } catch (err) {
+    console.error("[GET /api/keywords/:id] 统计失败", err);
+    return Response.json({ error: "统计失败" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -55,12 +107,12 @@ export async function DELETE(
   }
 
   // 先查再删:Supabase delete 在"无匹配行"时不会抛错,只返 data=null,
-  // 所以用一次 select 区分 404 和 204。
+  // 所以用一次 select 区分 404 和 200。同时需要 keyword 文本给 cascade。
   const { data: existing, error: selectErr } = await getSupabaseAdmin()
     .from("keywords")
-    .select("id")
+    .select("id, keyword")
     .eq("id", id)
-    .maybeSingle<Pick<KeywordRow, "id">>();
+    .maybeSingle<Pick<KeywordRow, "id" | "keyword">>();
 
   if (selectErr) {
     console.error("[DELETE /api/keywords/:id] 查询失败", selectErr);
@@ -71,8 +123,9 @@ export async function DELETE(
   }
 
   try {
+    const deletedVideosCount = await cascadeDeleteKeywordVideos(existing.keyword);
     await deleteKeyword(id);
-    return new Response(null, { status: 204 });
+    return Response.json({ id, deleted_videos_count: deletedVideosCount }, { status: 200 });
   } catch (err) {
     console.error("[DELETE /api/keywords/:id] 删除失败", err);
     return Response.json({ error: "删除失败" }, { status: 500 });

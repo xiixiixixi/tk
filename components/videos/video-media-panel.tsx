@@ -22,6 +22,14 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { Divider, Muted, Numeric, P } from "@/components/ui/typography";
 import {
@@ -86,11 +94,15 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
   const router = useRouter();
   const [retrying, setRetrying] = React.useState(false);
   const [retryError, setRetryError] = React.useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const subtitle = findSubtitleAsset(video.video_assets);
   const subtitleText = subtitle?.description?.trim() || null;
 
   const canRetry = video.analysis_status === "failed";
+  const isManualVideo = video.source_type === "manual_video";
 
   // failed → 调 /api/videos/:id/reanalyze 重置原视频状态,不建新记录
   const handleRetry = React.useCallback(async () => {
@@ -111,6 +123,27 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
     } catch (err) {
       setRetryError(err instanceof Error ? err.message : "提交失败");
       setRetrying(false);
+    }
+  }, [video.id, router]);
+
+  // manual_video → 软删除后回列表
+  const handleDelete = React.useCallback(async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/videos/${video.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || `HTTP ${res.status}`);
+      }
+      router.push("/videos");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "删除失败");
+      setDeleting(false);
     }
   }, [video.id, router]);
 
@@ -215,6 +248,33 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
                 )}
               </div>
             ) : null}
+
+            {/* manual_video → 直接删除;其他来源 → 引导到订阅页批量管理 */}
+            {isManualVideo ? (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteOpen(true)}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/30"
+                >
+                  删除视频
+                </Button>
+                <Muted>
+                  仅手动提交的单个视频可直接删除
+                </Muted>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <Muted>
+                  此视频来自{" "}
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    {SOURCE_LABELS[video.source_type] ?? video.source_type}
+                  </span>
+                  ,请到对应的订阅页面取消订阅后批量删除
+                </Muted>
+              </div>
+            )}
           </div>
 
           {/* 互动数据 5 列 */}
@@ -336,6 +396,14 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
                         · {video.source_value}
                       </span>
                     ) : null}
+                    {video.source_type === "creator_monitor" ? (
+                      <Link
+                        href="/creators"
+                        className="ml-2 text-xs font-medium text-[#C04A1A] underline-offset-4 hover:underline"
+                      >
+                        取消订阅
+                      </Link>
+                    ) : null}
                   </dd>
                 </div>
               </div>
@@ -363,6 +431,50 @@ export function VideoMediaPanel({ video }: VideoMediaPanelProps) {
       </div>
 
       <Divider className="mt-12 md:mt-16" />
+
+      {/* manual_video 删除确认 */}
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deleting) return;
+          setDeleteOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              确定删除这条视频?
+            </DialogTitle>
+            <DialogDescription asChild>
+              <Muted>此操作不可撤销</Muted>
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? (
+            <p className="text-xs text-red-600 dark:text-red-400">
+              {deleteError}
+            </p>
+          ) : null}
+          <DialogFooter className="mt-2 gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleting}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="min-w-[96px] bg-red-600 text-white hover:bg-red-700"
+            >
+              {deleting ? "删除中…" : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

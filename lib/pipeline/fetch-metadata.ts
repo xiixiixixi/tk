@@ -30,6 +30,7 @@ export default async function fetchMetadata(
   const runId = await startActorRun(url);
   await updateVideo(video.id, {
     apify_run_id: runId,
+    apify_started_at: new Date().toISOString(),
     analysis_status: "apify_started",
   });
   return { nextStatus: "apify_started" };

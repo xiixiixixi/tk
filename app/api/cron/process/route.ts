@@ -24,6 +24,16 @@ import resetAndRestart from "@/lib/pipeline/reset-and-restart";
 
 export const dynamic = "force-dynamic";
 
+/** 卡死判定阈值:updated_at 超过该小时数未推进视为卡死 */
+const STUCK_HOURS = 6;
+/** 进入以下中间态的 video 若超时未推进,标 failed */
+const STUCK_STATUSES = [
+  "apify_started",
+  "processing",
+  "metadata_fetched",
+  "subtitle_extracted",
+];
+
 type PipelineHandler = (
   video: VideoRow
 ) => Promise<{ nextStatus: AnalysisStatus; extra?: Partial<VideoUpdate> }>;
@@ -47,6 +57,33 @@ function cronSecretHeader(): Record<string, string> {
 }
 
 /**
+ * 扫描卡在中间态超过 STUCK_HOURS 的视频,标 failed。
+ * DB 出错不外抛 — 这是兜底,不能影响主流程。
+ */
+async function sweepStuckVideos(): Promise<number> {
+  try {
+    const cutoff = new Date(Date.now() - STUCK_HOURS * 60 * 60 * 1000).toISOString();
+    const { data, error } = await getSupabaseAdmin()
+      .from("videos")
+      .update({ analysis_status: "failed", error_message: "超时未推进" })
+      .in("analysis_status", STUCK_STATUSES)
+      .lt("updated_at", cutoff)
+      .is("deleted_at", null)
+      .select("id");
+    if (error) {
+      console.error("sweepStuckVideos error:", error);
+      return 0;
+    }
+    const count = data?.length ?? 0;
+    if (count > 0) console.log(`sweepStuckVideos: marked ${count} videos as failed`);
+    return count;
+  } catch (e) {
+    console.error("sweepStuckVideos unexpected error:", e);
+    return 0;
+  }
+}
+
+/**
  * 链式调用的"接力棒":fire-and-forget 触发下一轮 process。
  * 失败只记日志,不影响本轮返回(链断裂兜底)。
  */
@@ -64,6 +101,9 @@ async function triggerNext(): Promise<void> {
 export async function GET(req: Request) {
   const authFail = requireCronAuth(req);
   if (authFail) return authFail;
+
+  // 兜底:扫描卡在中间态超过 STUCK_HOURS 的视频,标 failed(避免 Apify 死了/调度器宕了导致视频永远卡住)
+  await sweepStuckVideos();
 
   const next = await getNextPendingVideo();
   if (!next) {

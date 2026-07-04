@@ -57,6 +57,8 @@ export interface ListVideosParams {
   /** 排序字段 */
   sortBy?: "created_at" | "play_count" | "like_count";
   sortDir?: "asc" | "desc";
+  /** 包含软删除行(默认 false,cleanup endpoint 需要扫已删除时传 true) */
+  includeDeleted?: boolean;
 }
 
 export interface ListVideosResult {
@@ -83,16 +85,18 @@ export async function listVideos(params: ListVideosParams = {}): Promise<ListVid
     maxDurationSec,
     sortBy = "created_at",
     sortDir = "desc",
+    includeDeleted = false,
   } = params;
 
   let query = getSupabaseAdmin()
     .from("videos")
     .select(
-      "id, tiktok_video_id, title, author_id, author_name, cover_url, video_file_url, play_count, like_count, comment_count, analysis_status, source_type, source_value, created_at, updated_at",
+      "id, tiktok_video_id, title, author_id, author_name, cover_url, video_file_url, play_count, like_count, comment_count, analysis_status, source_type, source_value, created_at, updated_at, deleted_at",
       { count: "exact" }
     )
     .order(sortBy, { ascending: sortDir === "asc" });
 
+  if (!includeDeleted) query = query.is("deleted_at", null);
   if (status) query = query.eq("analysis_status", status);
   if (sourceType) query = query.eq("source_type", sourceType);
   if (authorId) query = query.eq("author_id", authorId);
@@ -121,6 +125,7 @@ export async function getVideoById(id: string): Promise<VideoDetail | null> {
     .from("videos")
     .select("*, video_assets(*)")
     .eq("id", id)
+    .is("deleted_at", null)
     .single();
   if (error && error.code !== "PGRST116") throw error; // PGRST116 = not found
   return (data ?? null) as VideoDetail | null;
@@ -131,6 +136,7 @@ export async function getVideoByTiktokId(tiktokId: string): Promise<VideoRow | n
     .from("videos")
     .select("*")
     .eq("tiktok_video_id", tiktokId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
   return (data ?? null) as VideoRow | null;
@@ -157,6 +163,45 @@ export async function updateVideoStatus(
   extra: Partial<VideoUpdate> = {}
 ): Promise<void> {
   return updateVideo(id, { analysis_status: status, ...extra });
+}
+
+// ============================================================
+// 软删除(00007)
+// ============================================================
+
+/** 单条视频软删除:只写 deleted_at = NOW(),关联行(video_assets / analysis_results)不动 */
+export async function deleteVideo(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from("videos")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** 取消博主订阅时用:把该 creator_url 抓取的所有视频标记为已删 */
+export async function cascadeDeleteCreatorVideos(creatorUrl: string): Promise<number> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("videos")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("source_type", "creator_monitor")
+    .eq("source_value", creatorUrl)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
+/** 取消关键词订阅时用:把该 keyword 抓取的所有视频标记为已删 */
+export async function cascadeDeleteKeywordVideos(keyword: string): Promise<number> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("videos")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("source_type", "keyword_search")
+    .eq("source_value", keyword)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
 }
 
 // ============================================================
@@ -294,19 +339,24 @@ export async function getCreatorById(id: string): Promise<CreatorRow | null> {
   return (data ?? null) as CreatorRow | null;
 }
 
-/** 按 author_id 统计视频总数 + 已解析数(D5:不按 source_type,避免漏关键词入口采到的同作者视频) */
+/** 按 author_id 统计视频总数 + 已解析数(D5:不按 source_type,避免漏关键词入口采到的同作者视频;00007:排除软删除) */
 export async function getCreatorVideoStats(
   authorId: string | null
 ): Promise<{ video_count: number; analyzed_count: number }> {
   if (!authorId) return { video_count: 0, analyzed_count: 0 };
   const admin = getSupabaseAdmin();
   const [{ count: total }, { count: analyzed }] = await Promise.all([
-    admin.from("videos").select("id", { count: "exact", head: true }).eq("author_id", authorId),
     admin
       .from("videos")
       .select("id", { count: "exact", head: true })
       .eq("author_id", authorId)
-      .eq("analysis_status", "completed"),
+      .is("deleted_at", null),
+    admin
+      .from("videos")
+      .select("id", { count: "exact", head: true })
+      .eq("author_id", authorId)
+      .eq("analysis_status", "completed")
+      .is("deleted_at", null),
   ]);
   return { video_count: total ?? 0, analyzed_count: analyzed ?? 0 };
 }
@@ -356,7 +406,7 @@ export async function getKeywordById(id: string): Promise<KeywordRow | null> {
   return (data ?? null) as KeywordRow | null;
 }
 
-/** 按 source_value(=keyword)统计该关键词采集到的视频数 + 已解析数 */
+/** 按 source_value(=keyword)统计该关键词采集到的视频数 + 已解析数(00007:排除软删除) */
 export async function getKeywordVideoStats(
   keyword: string
 ): Promise<{ video_count: number; analyzed_count: number }> {
@@ -366,13 +416,15 @@ export async function getKeywordVideoStats(
       .from("videos")
       .select("id", { count: "exact", head: true })
       .eq("source_type", "keyword_search")
-      .eq("source_value", keyword),
+      .eq("source_value", keyword)
+      .is("deleted_at", null),
     admin
       .from("videos")
       .select("id", { count: "exact", head: true })
       .eq("source_type", "keyword_search")
       .eq("source_value", keyword)
-      .eq("analysis_status", "completed"),
+      .eq("analysis_status", "completed")
+      .is("deleted_at", null),
   ]);
   return { video_count: total ?? 0, analyzed_count: analyzed ?? 0 };
 }

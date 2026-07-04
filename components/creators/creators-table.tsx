@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Muted } from "@/components/ui/typography";
 import { normalizeCreatorInput } from "@/lib/apify/client";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +32,7 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
   const [adding, setAdding] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingAction, setPendingAction] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState<CreatorWithStats | null>(null);
 
   async function refetch() {
     const res = await fetch("/api/creators", { cache: "no-store" });
@@ -61,11 +71,13 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("确定删除这个博主?")) return;
+  async function handleDelete() {
+    if (!deleting) return;
+    const id = deleting.id;
     setPendingAction(id);
     try {
       await fetch(`/api/creators/${id}`, { method: "DELETE" });
+      setDeleting(null);
       await refetch();
     } finally {
       setPendingAction(null);
@@ -158,7 +170,7 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
                           {c.status === "active" ? "暂停" : "启用"}
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id)}
+                          onClick={() => setDeleting(c)}
                           disabled={pendingAction === c.id}
                           className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:text-red-600 disabled:opacity-50"
                         >
@@ -173,6 +185,61 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
           </table>
         </div>
       )}
+
+      {/* 删除确认弹窗 */}
+      <Dialog
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (pendingAction) return;
+          if (!open) setDeleting(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              取消订阅 @{creatorHandle(deleting)}?
+            </DialogTitle>
+            <DialogDescription asChild>
+              <Muted>
+                将删除该博主已采集的 {deleting?.video_count ?? 0} 条视频
+                {deleting && deleting.analyzed_count > 0
+                  ? `(其中 ${deleting.analyzed_count} 条已分析)`
+                  : ""}
+                。不可撤销。
+              </Muted>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-2 gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleting(null)}
+              disabled={!!pendingAction}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={!!pendingAction}
+              className="min-w-[96px] bg-red-600 text-white hover:bg-red-700"
+            >
+              {pendingAction ? "删除中…" : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// 从 CreatorWithStats 抽出显示用的 @handle
+function creatorHandle(c: CreatorWithStats | null): string {
+  if (!c) return "";
+  return (
+    c.creator_name ||
+    c.creator_url?.match(/@([\w._-]+)/)?.[1] ||
+    c.creator_url?.slice(-20) ||
+    "?"
   );
 }

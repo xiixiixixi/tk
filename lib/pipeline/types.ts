@@ -37,6 +37,9 @@ export interface VideoRow {
   apify_run_id: string | null;
   last_metric_update_time: string | null;
   error_message: string | null; // 00003: failed 时的错误原因,completed 时为 null
+  // 00007: 软删除标记 + apify_started 时间戳
+  deleted_at: string | null;
+  apify_started_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -175,6 +178,9 @@ export type VideoUpdate = Partial<Omit<VideoInsert, "source_type">> & {
   video_file_url?: string | null;
   last_metric_update_time?: string | null;
   error_message?: string | null; // 00003: failed 写入原因,completed 清空
+  // 00007: 软删除时间戳(soft-delete 用)+ apify_started 进入时间戳
+  deleted_at?: string | null;
+  apify_started_at?: string | null;
 };
 
 export type VideoAssetInsert = {
@@ -272,6 +278,8 @@ export interface VideoListItem {
   analysis_status: string;
   source_type: string;
   source_value: string | null;
+  // 00007: 列表视图中通常为 null(已过滤),仅 includeDeleted=true 时返回
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
