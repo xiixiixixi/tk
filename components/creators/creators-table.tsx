@@ -56,7 +56,7 @@ export function CreatorsTable({ initialCreators }: { initialCreators: CreatorWit
       const res = await fetch("/api/creators", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creator_url: normalized }),
+        body: JSON.stringify({ creator_url: normalized.url }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
