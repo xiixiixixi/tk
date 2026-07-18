@@ -103,7 +103,14 @@ export async function listVideos(params: ListVideosParams = {}): Promise<ListVid
   if (sourceValue) query = query.eq("source_value", sourceValue);
   if (search && search.trim()) {
     const term = `%${search.trim()}%`;
-    query = query.or(`title.ilike.${term},author_name.ilike.${term}`);
+    // searchType 控制搜索维度:title=仅标题 / author=仅作者 / all=标题+作者
+    if (searchType === "title") {
+      query = query.ilike("title", term);
+    } else if (searchType === "author") {
+      query = query.ilike("author_name", term);
+    } else {
+      query = query.or(`title.ilike.${term},author_name.ilike.${term}`);
+    }
   }
   if (minPlayCount != null) query = query.gte("play_count", minPlayCount);
   if (minLikeCount != null) query = query.gte("like_count", minLikeCount);

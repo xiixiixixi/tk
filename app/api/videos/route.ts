@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
   const authorId = params.get("authorId");
   const sourceValue = params.get("sourceValue");
   const search = params.get("search");
+  const searchType = (params.get("searchType") as "all" | "title" | "author" | null) ?? "all";
 
   // 可选的数值筛选(非空才传)
   const minPlayCount = parseIntOrNull(params.get("minPlayCount"));
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
       authorId: authorId ?? undefined,
       sourceValue: sourceValue ?? undefined,
       search: search ?? undefined,
+      searchType: searchType !== "all" ? searchType : undefined,
       minPlayCount: minPlayCount ?? undefined,
       minLikeCount: minLikeCount ?? undefined,
       minDurationSec: minDurationSec ?? undefined,
